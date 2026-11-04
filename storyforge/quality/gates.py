@@ -99,14 +99,16 @@ def gate_continuity(report: dict | None) -> Gate:
     return Gate("continuity", status, summary, open_issues + fixed, fix)
 
 
-def run_gates(ctx) -> dict:
+def run_gates(ctx, post_render: bool = True) -> dict:
+    """All gates. Before rendering (preflight) the loudness is measured on the mix; after muxing it is
+    measured on the encoded MP4 too (AAC can add true-peak overshoot)."""
     p = ctx.options.preset
     tl = read_json(ctx.path("timeline.json"))
     gates: list[Gate] = []
     mix = ctx.path("audio", "mix.wav")
     video = ctx.path("output", f"{ctx.episode_id}_{p}.mp4")
     gates.append(gate_audio_clipping(mix))
-    gates.append(gate_loudness(mix, video if video.is_file() else None))
+    gates.append(gate_loudness(mix, video if post_render and video.is_file() else None))
     gates.append(gate_captions_safe_area(read_json(ctx.path("captions", "layout.json"), {"lines": []})))
     gates.append(gate_runtime(tl, ctx.bible(), bool(ctx.options.duration_limit)))
     gates.append(gate_continuity(read_json(ctx.path("continuity.json"), None)))
@@ -117,4 +119,5 @@ def run_gates(ctx) -> dict:
     except ImportError:
         pass
     passed = all(g.status in ("pass", "warn", "skip") for g in gates)
-    return {"episode": ctx.episode_id, "preset": p, "passed": passed, "gates": [asdict(g) for g in gates]}
+    return {"episode": ctx.episode_id, "preset": p, "stage": "post_render" if post_render else "preflight",
+            "passed": passed, "gates": [asdict(g) for g in gates]}

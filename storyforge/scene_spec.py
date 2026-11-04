@@ -21,8 +21,9 @@ def t2f(t: float, fps: int) -> int:
     return FRAME_START + int(round(t * fps))
 
 
-def mouth_tracks(timeline: dict, cid: str, face_cfg: dict | None, fps: int) -> dict:
-    """Viseme shape-key keyframes for one character from the timed mouth cues of their lines."""
+def mouth_tracks(timeline: dict, cid: str, face_cfg: dict | None, fps: int, shift: int = 0) -> dict:
+    """Viseme shape-key keyframes for one character from the timed mouth cues of their lines
+    (`shift` frames: quality auto-fix for a measured lip-sync offset)."""
     mapping = resolve_map(face_cfg)
     cues: list[dict] = []
     for b in timeline["beats"]:
@@ -34,8 +35,8 @@ def mouth_tracks(timeline: dict, cid: str, face_cfg: dict | None, fps: int) -> d
         return {}
     frame_cues = cues_to_frames(cues, 0.0, fps)
     for fc in frame_cues:
-        fc["frame"] += FRAME_START
-        fc["end_frame"] += FRAME_START
+        fc["frame"] += FRAME_START + shift
+        fc["end_frame"] += FRAME_START + shift
     tracks = frames_to_shape_keys(frame_cues, mapping, blend_frames=1)
     return {k: [[f, round(v, 4)] for f, v in vals] for k, vals in tracks.items()}
 
@@ -76,7 +77,8 @@ def compile_spec(*, episode_id: str, timeline: dict, shotlist: dict, blocking: d
                     if b.get("speaker") == cid and b.get("audio")]
         cperf = dict(perf.get(cid, {}))
         face_plan = cperf.pop("face", {}) or {}
-        face = {"mouth": mouth_tracks(timeline, cid, (entry.get("rig") or {}).get("face"), fps)}
+        face = {"mouth": mouth_tracks(timeline, cid, (entry.get("rig") or {}).get("face"), fps,
+                                      int((perf_doc.get("lipsync_shift") or {}).get(cid, 0)))}
         for name, keys in (face_plan.get("mouth_expr") or {}).items():
             face["mouth"][name] = keys
         for k in ("brows", "eyes", "blush", "look"):

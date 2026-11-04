@@ -88,10 +88,10 @@ def duck_envelope(activity: np.ndarray, depth_db: float = -11.0, attack_s: float
     return dsp.db_to_gain(0) * (1 - env) + dsp.db_to_gain(depth_db) * env
 
 
-def master(mix: np.ndarray) -> tuple[np.ndarray, dict]:
+def master(mix: np.ndarray, ceiling_db: float = CEILING_DBTP) -> tuple[np.ndarray, dict]:
     # gentle bus glue, then loudness + true-peak limiting
     glued = dsp.compress(mix, SR, threshold_db=-16, ratio=1.8, attack_s=0.02, release_s=0.25, knee_db=8)
-    return dsp.normalize_loudness(glued, SR, TARGET_LUFS, CEILING_DBTP)
+    return dsp.normalize_loudness(glued, SR, TARGET_LUFS, ceiling_db)
 
 
 def _cue_clip(tag: str, seed: int) -> np.ndarray | None:
@@ -200,7 +200,7 @@ def ambience_bus(beds: list[dict], n: int) -> np.ndarray:
 def mix_episode(timeline: dict, episode_dir: Path, out_dir: Path, room: str, blocking: dict | None = None,
                 sfx_cues: list[dict] | None = None, music_plan: dict | None = None,
                 ambience: list[dict] | None = None, lead_seconds: float = 0.0,
-                lead_cues: list[dict] | None = None) -> dict:
+                lead_cues: list[dict] | None = None, ceiling_db: float = CEILING_DBTP) -> dict:
     """Full mix. `lead_seconds` prepends a recap lead-in (parts 2+): every story element is shifted by
     it and `lead_cues` (recap whooshes/swell) play inside it."""
     n_story = int((timeline["duration"] + 0.05) * SR)
@@ -233,7 +233,7 @@ def mix_episode(timeline: dict, episode_dir: Path, out_dir: Path, room: str, blo
         mix = mix + ab
     bg = mix - dlg - tone
     stats_bal = dialogue_balance(dlg, bg, activity)
-    mastered, stats = master(mix)
+    mastered, stats = master(mix, ceiling_db)
     stats.update(stats_bal)
     out_dir.mkdir(parents=True, exist_ok=True)
     dsp.save(out_dir / "mix.wav", mastered, SR)

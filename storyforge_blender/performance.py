@@ -40,10 +40,15 @@ def apply_body(scene, spec: dict, characters: dict) -> dict:
         perf = cs.get("performance", {})
         t = time.time()
         st = {}
-        if perf.get("foot_lock", True):
-            st["foot_lock"] = nla.foot_lock(scene, c["rig"], c["metrics"], fs, fe, fps)
-        if perf.get("collision_fix", True):
-            st["collision_frames"] = nla.collision_fix(scene, c["rig"], c["metrics"], fs, fe)
+        fl = perf.get("foot_lock", True)
+        if fl:
+            st["foot_lock"] = nla.foot_lock(scene, c["rig"], c["metrics"], fs, fe, fps,
+                                            **({k: float(v) for k, v in fl.items() if k in ("height", "speed")}
+                                               if isinstance(fl, dict) else {}))
+        cf = perf.get("collision_fix", True)
+        if cf:
+            st["collision_frames"] = nla.collision_fix(scene, c["rig"], c["metrics"], fs, fe,
+                                                       margin=float(cf.get("margin", 1.0)) if isinstance(cf, dict) else 1.0)
         if perf.get("secondary", True):
             bones = [b for b in ("hair_1", "backpack") if (b == "hair_1" and c.get("has_ponytail")) or
                      (b == "backpack" and c.get("has_backpack"))]

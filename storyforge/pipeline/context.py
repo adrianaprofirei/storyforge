@@ -27,6 +27,7 @@ class RunOptions:
     fps: int | None = None             # override the series fps
     duration_limit: float | None = None  # smoke tests: cut the timeline after N seconds
     skip_render: bool = False
+    ignore_gates: bool = False         # render "final" even if quality gates still fail after auto-fix
 
 
 class EpisodeContext:

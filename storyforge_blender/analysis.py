@@ -2,7 +2,7 @@
 
 For every shot, frames are sampled (every 2nd frame) and for each character we record world
 positions of the head, hands, feet and hips, the projected head box in the shot camera (on/off
-screen), arm elevation (T-pose detection), whether the rig has any animation, foot heights
+screen), arm elevation (T-pose detection), the head's facing direction (eyelines), whether the rig has any animation, foot heights
 (contact) and hand-to-torso distances (interpenetration). The camera transform per sample gives
 camera motion; together with body motion this detects static shots.
 """
@@ -40,6 +40,12 @@ def analyze(scene, spec: dict, built: dict, step: int = 2) -> dict:
         out["characters"][cid] = {"has_animation": has_anim, "head_size": c["metrics"]["head_size"],
                                   "torso_w": c["metrics"]["torso_w"], "torso_d": c["metrics"]["torso_d"]}
     cams = {o.get("sf_shot"): o for o in bpy.data.objects if o.type == "CAMERA" and o.get("sf_shot")}
+    # head forward axis in head-bone space: characters face -Y in armature space at rest
+    head_fwd_local = {}
+    for cid, c in chars.items():
+        pb = c["rig"].pose.bones.get("head")
+        if pb is not None:
+            head_fwd_local[cid] = pb.bone.matrix_local.to_3x3().inverted() @ Vector((0.0, -1.0, 0.0))
     for s in spec["shots"]:
         cam = cams.get(s["id"])
         samples = []
@@ -59,6 +65,9 @@ def analyze(scene, spec: dict, built: dict, step: int = 2) -> dict:
                 if head:
                     hc = (head[0] + head[1]) / 2
                     d["head"] = list(hc)
+                    if cid in head_fwd_local:
+                        m = rig.matrix_world.to_3x3() @ rig.pose.bones["head"].matrix.to_3x3()
+                        d["head_fwd"] = [round(v, 4) for v in (m @ head_fwd_local[cid]).normalized()]
                     if cam is not None:
                         hs = c["metrics"]["head_size"] * 0.5
                         pts = [world_to_camera_view(scene, cam, hc + Vector(o)) for o in

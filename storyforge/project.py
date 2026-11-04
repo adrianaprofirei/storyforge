@@ -16,6 +16,7 @@ from __future__ import annotations
 import copy
 import datetime as _dt
 import shutil
+import threading
 from pathlib import Path
 
 from storyforge.config import ASSETS_DIR, get_settings
@@ -28,6 +29,10 @@ SAMPLES_DIR = ASSETS_DIR / "samples"
 
 def now_iso() -> str:
     return _dt.datetime.now(_dt.UTC).replace(microsecond=0).isoformat()
+
+
+_BIBLE_LOCKS: dict[str, threading.RLock] = {}
+_LOCKS_GUARD = threading.Lock()
 
 
 class Project:
@@ -103,6 +108,12 @@ class Project:
     def bible(self) -> dict:
         return read_yaml(self.bible_path)
 
+    def bible_lock(self) -> threading.RLock:
+        """Serializes read-modify-write of the bible across jobs/threads of this process."""
+        key = str(self.root.resolve())
+        with _LOCKS_GUARD:
+            return _BIBLE_LOCKS.setdefault(key, threading.RLock())
+
     def bible_versions(self) -> list[dict]:
         out = []
         for p in sorted((self.root / "bible" / "versions").glob("v*.yaml")):
@@ -116,6 +127,10 @@ class Project:
         return read_yaml(self.root / "bible" / "versions" / f"v{version:04d}.yaml")
 
     def save_bible(self, bible: dict, message: str = "edit") -> int:
+        with self.bible_lock():
+            return self._save_bible(bible, message)
+
+    def _save_bible(self, bible: dict, message: str) -> int:
         doc = copy.deepcopy(bible)
         doc.pop("_meta", None)
         errors = schema_errors("bible", doc)
@@ -136,9 +151,10 @@ class Project:
         return self.save_bible(doc, message=f"restored v{version}")
 
     def update_bible(self, fn, message: str) -> int:
-        bible = self.bible()
-        fn(bible)
-        return self.save_bible(bible, message=message)
+        with self.bible_lock():
+            bible = self.bible()
+            fn(bible)
+            return self.save_bible(bible, message=message)
 
     # ------------------------------------------------------------------ cast
     def cast(self) -> dict[str, dict]:
@@ -255,6 +271,10 @@ class Project:
     def upsert_continuity_entry(self, entry: dict) -> int | None:
         """Replace this episode's continuity entry (kept in episode order); returns the new bible
         version, or None when nothing changed."""
+        with self.bible_lock():
+            return self._upsert_continuity_entry(entry)
+
+    def _upsert_continuity_entry(self, entry: dict) -> int | None:
         bible = self.bible()
         log = bible.get("continuity_log", []) or []
         old = next((e for e in log if e.get("episode_id") == entry["episode_id"]), None)
@@ -273,6 +293,10 @@ class Project:
 
     def mark_episode_rendered(self, episode_id: str, preset: str, video: str | None = None) -> int | None:
         """Track a finished render in the bible (episode list + continuity entry). One version per change."""
+        with self.bible_lock():
+            return self._mark_episode_rendered(episode_id, preset)
+
+    def _mark_episode_rendered(self, episode_id: str, preset: str) -> int | None:
         bible = self.bible()
         changed = False
         for e in bible.get("episodes", []):

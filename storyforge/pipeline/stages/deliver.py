@@ -8,6 +8,7 @@ from pathlib import Path
 
 from storyforge.captions.ass import build_ass, build_graphics_ass, build_srt
 from storyforge.pipeline.runner import Stage
+from storyforge.quality.autofix import section
 from storyforge.util.hashing import maybe_file_hash, tree_hash
 from storyforge.util.io import read_json, write_json
 
@@ -52,7 +53,7 @@ class CaptionsStage(Stage):
                 "style": (bible.get("look", {}) or {}).get("caption_style", "bold_pop"),
                 "accent": (bible.get("look", {}) or {}).get("accent_color"),
                 "card": bible.get("format", {}).get("part_card"), "part": ctx.meta().get("part"),
-                "recap": rc["seconds"] if rc else None}
+                "recap": rc["seconds"] if rc else None, "fixes": section(ctx, "captions")}
 
     def outputs(self, ctx):
         return [ctx.path("captions", "captions.ass"), ctx.path("captions", "captions.srt"),
@@ -64,7 +65,8 @@ class CaptionsStage(Stage):
         look = bible.get("look", {}) or {}
         rc = recap_info(ctx)
         offset = rc["seconds"] if rc else 0.0
-        ass, layout = build_ass(tl, look.get("caption_style", "bold_pop"), offset, accent=look.get("accent_color"))
+        ass, layout = build_ass(tl, look.get("caption_style", "bold_pop"), offset, accent=look.get("accent_color"),
+                                scale=float(section(ctx, "captions").get("scale", 1.0)))
         out = ctx.sub("captions")
         (out / "captions.ass").write_text(ass, encoding="utf-8")
         (out / "captions.srt").write_text(build_srt(tl, offset), encoding="utf-8")
@@ -172,20 +174,25 @@ class QualityStage(Stage):
                 "timeline": maybe_file_hash(ctx.path("timeline.json")), "shots": maybe_file_hash(ctx.path("shotlist.json")),
                 "mix": maybe_file_hash(ctx.path("audio", "mix.wav")),
                 "layout": maybe_file_hash(ctx.path("captions", "layout.json")),
-                "continuity": maybe_file_hash(ctx.path("continuity.json")), "preset": p}
+                "continuity": maybe_file_hash(ctx.path("continuity.json")),
+                "preflight": maybe_file_hash(ctx.path("quality", f"preflight_{p}.json")), "preset": p}
 
     def outputs(self, ctx):
         return [ctx.path("quality", f"report_{ctx.options.preset}.json")]
 
     def run(self, ctx):
+        from storyforge.pipeline.stages.preflight import preflight_summary
         from storyforge.quality.gates import run_gates
 
         report = run_gates(ctx)
+        report["preflight"] = preflight_summary(ctx)
         write_json(ctx.path("quality", f"report_{ctx.options.preset}.json"), report)
         md = [f"# Quality report: {ctx.episode_id} ({ctx.options.preset})", "",
               f"**Result:** {'PASS' if report['passed'] else 'FAIL'}", ""]
         for g in report["gates"]:
             md.append(f"- **{g['name']}**: {g['status'].upper()} - {g['summary']}")
+        for r in (report.get("preflight") or {}).get("rounds", []):
+            md.append(f"- auto-fix round {r['round']}: " + "; ".join(a["detail"] for a in r["applied"]))
         (ctx.path("quality") / f"report_{ctx.options.preset}.md").write_text("\n".join(md) + "\n", encoding="utf-8")
         return {"passed": report["passed"], "failed": [g["name"] for g in report["gates"] if g["status"] == "fail"]}
 

@@ -167,3 +167,26 @@ def apply_edits(sp: dict, edits: dict) -> dict:
 def next_beat_id(sp: dict) -> str:
     nums = [int(b["id"][1:]) for b in sp.get("beats", []) if re.fullmatch(r"b\d+", b.get("id", ""))]
     return f"b{(max(nums) + 1 if nums else 1):02d}"
+
+
+def diff_edits(base: dict, edited: dict) -> dict:
+    """Beat-editor result (a full screenplay) -> minimal edits.json relative to the reviewed base,
+    so user edits survive re-reviews and only the changed beats count as hand-edited."""
+    bb = {b["id"]: b for b in base.get("beats", [])}
+    eb = {b["id"]: b for b in edited.get("beats", [])}
+    edits: dict = {"beats": {}, "added": [], "deleted": [bid for bid in bb if bid not in eb]}
+    for bid, b in eb.items():
+        if bid in bb:
+            changed = {k: b.get(k) for k in EDITABLE_FIELDS if b.get(k) != bb[bid].get(k)}
+            if changed:
+                edits["beats"][bid] = changed
+        else:
+            edits["added"].append(b)
+    order = [b["id"] for b in edited.get("beats", [])]
+    natural = [b["id"] for b in base.get("beats", []) if b["id"] in eb] + [b["id"] for b in edits["added"]]
+    if order != natural:
+        edits["order"] = order
+    for k in ("title", "logline", "location", "time_of_day", "music_mood", "cast"):
+        if k in edited and edited.get(k) != base.get(k):
+            edits[k] = edited[k]
+    return {k: v for k, v in edits.items() if v not in ({}, [], None)}

@@ -45,7 +45,8 @@ def run_part(project, episode_id: str, args) -> list:
     opts = RunOptions(preset=args.preset, force=set(filter(None, (args.force or "").split(","))),
                       only_shots=[s for s in (args.shots or "").split(",") if s] or None,
                       until=args.until, max_frames=args.max_frames or None, fps=args.fps or None,
-                      duration_limit=args.duration or None, skip_render=args.no_render)
+                      duration_limit=args.duration or None, skip_render=args.no_render,
+                      ignore_gates=args.ignore_gates, autofix=not args.no_autofix)
     ctx = EpisodeContext(project, episode_id, opts, on_progress=_progress_printer(),
                          on_log=lambda line: print(line, flush=True))
     t = time.time()
@@ -159,6 +160,8 @@ def _add_run_opts(p):
     p.add_argument("--fps", type=int, default=0, help="override fps (e.g. 12 for quick previews)")
     p.add_argument("--duration", type=float, default=0.0, help="cut the timeline after N seconds (smoke tests)")
     p.add_argument("--no-render", action="store_true", help="stop before Blender (story/audio only)")
+    p.add_argument("--ignore-gates", action="store_true", help="render 'final' even if quality gates still fail")
+    p.add_argument("--no-autofix", action="store_true", help="report failing quality gates without auto-fixing")
 
 
 def main(argv: list[str] | None = None) -> int:

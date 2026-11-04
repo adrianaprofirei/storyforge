@@ -89,8 +89,9 @@ def measure_text_px(text: str, size: int, font: str = "Inter", bold: bool = True
 
 
 def build_ass(timeline: dict, style_name: str = "bold_pop", offset: float = 0.0, names: dict | None = None,
-              accent: str | None = None) -> tuple[str, list[dict]]:
+              accent: str | None = None, scale: float = 1.0) -> tuple[str, list[dict]]:
     st = dict(STYLE_PRESETS.get(style_name, STYLE_PRESETS["bold_pop"]))
+    st["size"] = int(round(st["size"] * scale))  # quality auto-fix: smaller font when lines leave the safe area
     if accent:
         st["highlight"] = accent
     lines_meta: list[dict] = []

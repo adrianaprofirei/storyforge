@@ -87,7 +87,8 @@ class ReviewStage(Stage):
                 "provider": [ctx.llm.name, ctx.llm.model]}
 
     def outputs(self, ctx):
-        return [ctx.path("screenplay.final.json"), ctx.path("review.json"), ctx.path("continuity.json")]
+        return [ctx.path("screenplay.final.json"), ctx.path("review.json"), ctx.path("continuity.json"),
+                ctx.path("screenplay.reviewed.json")]
 
     def run(self, ctx):
         from storyforge.story.continuity import check_and_fix, prior_entries
@@ -122,6 +123,8 @@ class ReviewStage(Stage):
             ctx.log("review rewrites produced an invalid screenplay; keeping the original beats")
             reviewed = sp
             review["rejected_rewrites"] = True
+        # the reviewed script before user edits: the beat editor diffs against it to write edits.json
+        write_json(ctx.path("screenplay.reviewed.json"), normalize(reviewed))
         edits = read_json(ctx.path("edits.json"), {})
         final = normalize(apply_edits(reviewed, edits))
         errors = validate(final)

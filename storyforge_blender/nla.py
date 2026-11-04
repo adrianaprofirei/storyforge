@@ -227,7 +227,8 @@ def _calibrate_pole(scene, rig, cons, frame):
         ik.location = (0, 0, 0)
 
 
-def foot_lock(scene, rig, metrics: dict, frame_start: int, frame_end: int, fps: int, log=print):
+def foot_lock(scene, rig, metrics: dict, frame_start: int, frame_end: int, fps: int, log=print,
+              height: float = 0.03, speed: float = 0.45):
     """Lock planted feet with 2-bone IK (no foot sliding while standing, turning or walking)."""
     cons = setup_leg_ik(rig)
     if not cons:
@@ -251,7 +252,7 @@ def foot_lock(scene, rig, metrics: dict, frame_start: int, frame_end: int, fps: 
         for i in range(n):
             h = ps[i].z - ankle_rest
             v = (ps[min(n - 1, i + 1)] - ps[max(0, i - 1)]).length * fps / 2
-            contact.append(h < 0.03 and v < 0.45)
+            contact.append(h < height and v < speed)
         # intervals
         spans, start = [], None
         for i, on in enumerate(contact + [False]):
@@ -291,12 +292,13 @@ def foot_lock(scene, rig, metrics: dict, frame_start: int, frame_end: int, fps: 
     return stats
 
 
-def collision_fix(scene, rig, metrics: dict, frame_start: int, frame_end: int, relaxed_ref=None, step: int = 2):
+def collision_fix(scene, rig, metrics: dict, frame_start: int, frame_end: int, relaxed_ref=None, step: int = 2,
+                  margin: float = 1.0):
     """Push hands out of the torso: upper-arm abduction on a COMBINE correction layer."""
     tw, td = metrics["torso_w"], metrics["torso_d"]
     limb = metrics["limb"]
-    x_in = tw / 2 + limb * 0.45
-    y_in = td / 2 + limb * 0.45
+    x_in = tw / 2 + limb * 0.45 * margin
+    y_in = td / 2 + limb * 0.45 * margin
     z0, z1 = metrics["hip_z"] - 0.02, metrics["neck_base"]
     corr = {"L": [], "R": []}
     hits = 0

@@ -291,8 +291,11 @@ def plan_character(cid: str, timeline: dict, blocking: dict, cast_entry: dict, l
             "collision_fix": True, "hip_height": round(metrics["hip_z"], 4)}
 
 
-def plan_performance(timeline: dict, blocking: dict, cast: dict, fps: int, log=print, use_mocap: bool = True) -> dict:
+def plan_performance(timeline: dict, blocking: dict, cast: dict, fps: int, log=print, use_mocap: bool = True,
+                     disable_mocap: set[str] | None = None) -> dict:
     lib = ClipLibrary(fps, use_mocap=use_mocap, log=log)
+    for name in disable_mocap or ():  # quality auto-fix: a mocap clip produced T-poses -> built-in clip
+        lib.mocap.pop(name, None)
     from storyforge.performance.face import reaction_gestures
 
     props = plan_props(timeline, blocking)

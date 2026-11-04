@@ -119,8 +119,14 @@ def run_episode(ctx: EpisodeContext, stages: list[Stage] | None = None) -> list[
                 raise
             _flush_llm_calls(ctx, st.name, n_calls)
             seconds = time.time() - t0
-            # outputs may depend on what run() produced (e.g. file names); re-query
+            # outputs may depend on what run() produced (e.g. file names); re-query. Inputs too: a
+            # stage may create its own input (screenplay.json) or fix upstream files (preflight), and
+            # the record must describe the state it left behind so the next run is a cache hit.
             outputs = st.outputs(ctx)
+            post = st.inputs(ctx)
+            if st.code:
+                post = {"_inputs": post, "_code": code_hash(*st.code)}
+            key = stage_key(st.name, st.version, post)
             records.put(st.name, key, outputs, seconds, {"info": info})
             reports.append(StageReport(st.name, "ran", seconds, key, info))
             ctx.log(f"done in {seconds:.1f}s")
@@ -131,6 +137,20 @@ def run_episode(ctx: EpisodeContext, stages: list[Stage] | None = None) -> list[
             break
     ctx.stage_name = ""
     return reports
+
+
+def run_subset(ctx: EpisodeContext, names: list[str]) -> list[StageReport]:
+    """Re-run (cache-aware) some stages from inside another stage, e.g. after the preflight applied
+    auto-fixes. Progress of the nested run is not reported (the caller owns the progress bar)."""
+    from storyforge.pipeline.stages import ALL_STAGES
+
+    saved = (ctx.stage_name, ctx._stage_weight, ctx._on_progress, ctx.options.until)
+    ctx._on_progress = None
+    ctx.options.until = None
+    try:
+        return run_episode(ctx, [cls() for cls in ALL_STAGES if cls.name in names])
+    finally:
+        ctx.stage_name, ctx._stage_weight, ctx._on_progress, ctx.options.until = saved
 
 
 def summarize(reports: list[StageReport]) -> str:
