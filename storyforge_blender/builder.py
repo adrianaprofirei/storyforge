@@ -52,8 +52,18 @@ def build_scene(spec: dict, episode_dir: Path) -> dict:
     chars_coll = bpy.data.collections.new("CHARACTERS")
     scene.collection.children.link(chars_coll)
     characters = {}
+    from storyforge_blender import importers
+
     for cs in spec["characters"]:
         c = build_character(cs, mats, scene)
+        if cs.get("kind") == "imported" and (cs.get("import") or {}).get("file"):
+            # the procedural build becomes a hidden canonical proxy that drives the imported rig
+            for o in c["collection"].objects:
+                if o.type == "MESH":
+                    o.hide_render = True
+                    o.hide_viewport = True
+            c["imported"] = importers.load_imported(cs, scene, c["metrics"])
+            log(f"imported character {cs['id']} from {cs['import']['file']}")
         # move the character collection under CHARACTERS (for light linking / line art)
         scene.collection.children.unlink(c["collection"])
         chars_coll.children.link(c["collection"])
@@ -63,6 +73,14 @@ def build_scene(spec: dict, episode_dir: Path) -> dict:
     from storyforge_blender import performance
 
     performance.apply_all(scene, spec, characters, mats, sb)
+    for cs in spec["characters"]:
+        c = characters[cs["id"]]
+        if c.get("imported"):
+            n = importers.bake_from_proxy(scene, c["rig"], c["imported"], fs, fe)
+            fm = c["imported"].get("face_mesh")
+            if fm is not None:
+                animate.apply_shape_key_tracks(fm, cs.get("face", {}).get("mouth", {}), "LINEAR")
+            log(f"baked {n} bones onto imported {cs['id']}")
 
     # cameras + lighting
     build_shot_cameras(scene, spec["shots"])

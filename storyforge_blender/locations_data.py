@@ -75,6 +75,7 @@ LOCATIONS: dict[str, dict] = {
         "key_dir": 20.0,
         "palette": {"wall": "#D9E4EC", "trim": "#2C5D8A", "floor": "#C7C2B8", "accent": "#E8B33C"},
         "dressing": ["lockers", "notice_boards", "ceiling_lights", "windows"],
+        "extras_lane": [1.15, 1.7], "extras_x": [-5.5, 5.5],
     },
     "street": {
         "name": "Town square",
@@ -96,6 +97,7 @@ LOCATIONS: dict[str, dict] = {
         "key_dir": 40.0,
         "palette": {"wall": "#E7C9A9", "trim": "#7A4E3A", "floor": "#9C9488", "accent": "#5FA8D3"},
         "dressing": ["shopfronts", "fountain", "lamps", "tower_far", "trees"],
+        "extras_lane": [2.4, 4.0], "extras_x": [-7.5, 7.5],
     },
 }
 

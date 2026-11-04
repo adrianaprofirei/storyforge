@@ -10,6 +10,7 @@ from storyforge.cinematography.moves import camera_keys, focus_keys
 from storyforge.lighting.three_point import base_lighting, shot_rig
 from storyforge.performance.lipsync import cues_to_frames, frames_to_shape_keys, resolve_map
 from storyforge.staging import head_point
+from storyforge.util.hashing import stable_hash
 from storyforge_blender.locations_data import get_location
 
 FRAME_START = 1
@@ -66,27 +67,26 @@ def compile_spec(*, episode_id: str, timeline: dict, shotlist: dict, blocking: d
         shots_out[-1]["frame_end"] = frame_end
 
     chars = []
-    perf = performance or {}
+    perf_doc = performance or {}
+    perf = perf_doc.get("characters", {})
     for cid in timeline["cast"]:
         entry = cast.get(cid) or {"id": cid, "name": cid, "kind": "procedural", "look": {}}
         path = [[round(t, 4), round(x, 4), round(y, 4), round(yaw, 3)] for t, x, y, yaw in blocking["paths"][cid]]
         speaking = [[t2f(b["audio"]["start"], fps), t2f(b["audio"]["end"], fps)] for b in timeline["beats"]
                     if b.get("speaker") == cid and b.get("audio")]
-        cperf = perf.get(cid, {})
+        cperf = dict(perf.get(cid, {}))
+        face_plan = cperf.pop("face", {}) or {}
         face = {"mouth": mouth_tracks(timeline, cid, (entry.get("rig") or {}).get("face"), fps)}
-        for k in ("brows", "eyes", "blush", "mouth_expr"):
-            if cperf.get(k):
-                if k == "mouth_expr":
-                    for name, keys in cperf[k].items():
-                        face["mouth"][name] = keys
-                else:
-                    face[k] = cperf[k]
+        for name, keys in (face_plan.get("mouth_expr") or {}).items():
+            face["mouth"][name] = keys
+        for k in ("brows", "eyes", "blush", "fx"):
+            if face_plan.get(k):
+                face[k] = face_plan[k]
+        cperf.pop("used_clips", None)
         chars.append({"id": cid, "name": entry.get("name", cid), "kind": entry.get("kind", "procedural"),
                       "look": entry.get("look", {}), "rig": entry.get("rig", {}), "import": entry.get("import"),
                       "settings": entry.get("settings", {}), "path": path,
-                      "performance": {"speaking_frames": speaking, **{k: v for k, v in cperf.items()
-                                                                       if k not in ("brows", "eyes", "blush", "mouth_expr")}},
-                      "face": face})
+                      "performance": {"speaking_frames": speaking, **cperf}, "face": face})
     events = [{**e, "frame": t2f(e["t"], fps)} for e in timeline["events"]]
     return {
         "version": SPEC_VERSION,
@@ -104,6 +104,11 @@ def compile_spec(*, episode_id: str, timeline: dict, shotlist: dict, blocking: d
         "characters": chars,
         "shots": shots_out,
         "events": events,
+        "clips": perf_doc.get("clips", {}),
+        "clips_hash": stable_hash(perf_doc.get("clips", {})),
+        "props": perf_doc.get("props", []),
+        "extras": perf_doc.get("extras", []),
+        "fx": perf_doc.get("fx", []),
         "audio": {"mix": audio_mix},
         "paths": {"episode_dir": episode_dir},
     }
@@ -130,13 +135,24 @@ def shot_fingerprint(spec: dict, shot_id: str) -> dict:
 
     chars = []
     for c in spec["characters"]:
+        perf = dict(c["performance"])
+        strips = []
+        for st in perf.pop("strips", []):
+            frames = (spec.get("clips", {}).get(st["clip"]) or {}).get("frames", 60)
+            end = st["start"] + frames * st.get("scale", 1.0) * st.get("repeat", 1.0)
+            if st["start"] <= hi + margin and end >= lo - margin:
+                strips.append(st)
         chars.append({"id": c["id"], "look": c["look"], "rig": c["rig"], "import": c.get("import"),
-                      "path": [p for p in c["path"]], "face": window(c["face"]),
-                      "performance": window({k: v for k, v in c["performance"].items()})})
+                      "path": [p for p in c["path"]], "face": window(c["face"]), "strips": strips,
+                      "performance": window(perf)})
     rig = next((r for r in spec["lighting"]["rigs"] if r["frame"] == f0), None)
     return {
         "shot": shot, "style": spec["style"], "grade": spec["grade"], "render": spec["render"],
         "location": spec["location"], "lighting_base": spec["lighting"]["base"], "rig": rig, "fps": spec["fps"],
         "characters": chars,
         "events": [e for e in spec["events"] if lo - spec["fps"] * 2 <= e["frame"] <= hi],
+        "clips_hash": spec.get("clips_hash"),
+        "props": spec.get("props", []),
+        "extras": spec.get("extras", []),
+        "fx": [x for x in spec.get("fx", []) if lo - margin <= x.get("frame", 0) <= hi + margin],
     }
