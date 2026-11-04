@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://storyforge.dev/schemas/continuity.schema.json",
+  "title": "Continuity log entry written after an episode renders",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "summary",
+    "changes"
+  ],
+  "properties": {
+    "summary": {
+      "type": "string",
+      "maxLength": 700
+    },
+    "changes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "relationships",
+        "objects",
+        "secrets",
+        "facts"
+      ],
+      "properties": {
+        "relationships": {
+          "type": "array",
+          "maxItems": 10,
+          "items": {
+            "type": "string",
+            "maxLength": 240
+          }
+        },
+        "objects": {
+          "type": "array",
+          "maxItems": 10,
+          "items": {
+            "type": "string",
+            "maxLength": 240
+          }
+        },
+        "secrets": {
+          "type": "array",
+          "maxItems": 10,
+          "items": {
+            "type": "string",
+            "maxLength": 240
+          }
+        },
+        "facts": {
+          "type": "array",
+          "maxItems": 10,
+          "items": {
+            "type": "string",
+            "maxLength": 240
+          }
+        }
+      }
+    },
+    "open_threads": {
+      "type": "array",
+      "maxItems": 10,
+      "items": {
+        "type": "string",
+        "maxLength": 240
+      }
+    }
+  }
+}

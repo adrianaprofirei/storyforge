@@ -1,0 +1,60 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "storyforge"
+version = "0.1.0"
+description = "StoryForge: a production pipeline that turns story ideas into vertical animated shorts rendered in Blender."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+dependencies = [
+  "fastapi>=0.110",
+  "uvicorn[standard]>=0.27",
+  "pydantic>=2.6",
+  "pyyaml>=6.0",
+  "jsonschema>=4.21",
+  "numpy>=1.26",
+  "scipy>=1.11",
+  "soundfile>=0.12",
+  "pyloudnorm>=0.1.1",
+  "pillow>=10.0",
+  "httpx>=0.27",
+  "python-multipart>=0.0.9",
+  "python-dotenv>=1.0",
+]
+
+[project.optional-dependencies]
+llm = ["openai>=1.40", "anthropic>=0.40"]
+piper = ["piper-tts>=1.2"]
+whisper = ["faster-whisper>=1.0"]
+dev = ["pytest>=8", "pytest-timeout>=2.2", "ruff>=0.4"]
+all = ["storyforge[llm,piper,dev]"]
+
+[project.scripts]
+storyforge = "storyforge.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["storyforge*", "storyforge_blender*"]
+
+[tool.setuptools.package-data]
+storyforge = ["schemas/*.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+  "blender: needs Blender (BLENDER_PATH) or a Python with the bpy module (BLENDER_PYTHON)",
+  "rhubarb: needs the Rhubarb Lip Sync binary",
+  "slow: long running test (renders)",
+]
+timeout = 1800
+addopts = "-ra"
+
+[tool.ruff]
+line-length = 110
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+ignore = ["E501", "B008", "UP038"]

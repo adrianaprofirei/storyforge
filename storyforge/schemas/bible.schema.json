@@ -1,0 +1,200 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://storyforge.dev/schemas/bible.schema.json",
+  "title": "StoryForge series bible",
+  "type": "object",
+  "required": [
+    "series_id",
+    "title",
+    "world",
+    "characters",
+    "locations"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "series_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]{0,39}$"
+    },
+    "title": {
+      "type": "string",
+      "maxLength": 80
+    },
+    "version": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "logline": {
+      "type": "string"
+    },
+    "world": {
+      "type": "object",
+      "required": [
+        "setting",
+        "tone",
+        "target_audience",
+        "content_rules",
+        "visual_style"
+      ],
+      "properties": {
+        "setting": {
+          "type": "string"
+        },
+        "tone": {
+          "type": "string"
+        },
+        "target_audience": {
+          "type": "string"
+        },
+        "content_rules": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "visual_style": {
+          "enum": [
+            "stylized_3d",
+            "cartoon"
+          ]
+        }
+      }
+    },
+    "format": {
+      "type": "object"
+    },
+    "look": {
+      "type": "object"
+    },
+    "characters": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "personality"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]{0,39}$"
+          },
+          "name": {
+            "type": "string"
+          },
+          "cast_ref": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "personality": {
+            "type": "string"
+          },
+          "speech_patterns": {
+            "type": "string"
+          },
+          "catchphrases": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "wants": {
+            "type": "string"
+          },
+          "fears": {
+            "type": "string"
+          },
+          "voice_direction": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "relationships": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "a",
+          "b",
+          "type"
+        ],
+        "properties": {
+          "a": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]{0,39}$"
+          },
+          "b": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]{0,39}$"
+          },
+          "type": {
+            "type": "string"
+          },
+          "notes": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "running_gags": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "description"
+        ]
+      }
+    },
+    "locations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "preset"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]{0,39}$"
+          },
+          "name": {
+            "type": "string"
+          },
+          "preset": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "arcs": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "episodes": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "continuity_log": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    }
+  }
+}

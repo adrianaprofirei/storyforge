@@ -1,0 +1,93 @@
+# Cast registry: one entry per character. Looks, rig and voice live here so a character
+# looks and sounds identical in every episode. All characters are ORIGINAL procedural
+# "blocky toy figures" generated in Blender (see storyforge_blender/character.py).
+milo:
+  id: milo
+  name: Milo
+  kind: procedural
+  look:
+    body: {height: 1.0, head_size: 1.04, torso_width: 1.0, torso_depth: 1.0, limb_thickness: 1.0, leg_length: 1.0, arm_length: 1.0}
+    colors:
+      skin: "#F2C39B"
+      top: "#1FA39A"
+      top_accent: "#F5D547"
+      bottom: "#6B4F3A"
+      shoes: "#D64541"
+      hair: "#D9541E"
+      eyes: "#2A1A10"
+      lips: "#B5654A"
+    hair: {style: spiky}
+    accessories:
+      - {type: goggles, color: "#8A6D3B", lens: "#7FD3E8"}
+    clothing: {top: hoodie, top_pattern: emblem, bottom: pants}
+    face: {eye_size: 1.05, brow_thickness: 1.0, mouth_width: 1.0, freckles: true}
+  rig: {type: storyforge_humanoid_v1}
+  voice:
+    elevenlabs: {voice_id: null, labels: {gender: male, age: young}}
+    openai: {voice: verse}
+    piper: {model: en_US-ryan-high, speaker: null}
+    espeak: {voice: "en-us+m3", pitch: 62, speed: 178}
+    pitch_semitones: 2.5
+    base_direction: bright, quick, breathless excitement
+  settings: {walk_style: bouncy, idle_energy: 0.75, blink_rate: 1.1, gesture_scale: 1.15}
+
+zara:
+  id: zara
+  name: Zara
+  kind: procedural
+  look:
+    body: {height: 0.97, head_size: 1.0, torso_width: 0.92, torso_depth: 0.95, limb_thickness: 0.9, leg_length: 1.02, arm_length: 1.0}
+    colors:
+      skin: "#8D5A3B"
+      top: "#E0A526"
+      top_accent: "#F7F1E3"
+      bottom: "#2B3A67"
+      shoes: "#6C3A8E"
+      hair: "#2E1A3F"
+      eyes: "#1A0F08"
+      lips: "#6E3A2B"
+    hair: {style: ponytail}
+    accessories:
+      - {type: glasses, color: "#2A2A2A"}
+    clothing: {top: cardigan, top_pattern: solid, bottom: pants}
+    face: {eye_size: 0.95, brow_thickness: 0.85, mouth_width: 0.9, freckles: false}
+  rig: {type: storyforge_humanoid_v1}
+  voice:
+    elevenlabs: {voice_id: null, labels: {gender: female, age: young}}
+    openai: {voice: coral}
+    piper: {model: en_US-lessac-medium, speaker: null}
+    espeak: {voice: "en-us+f2", pitch: 58, speed: 160}
+    pitch_semitones: 1.5
+    base_direction: calm, measured, deadpan with rare sly warmth
+  settings: {walk_style: brisk, idle_energy: 0.45, blink_rate: 0.9, gesture_scale: 0.85}
+
+gus:
+  id: gus
+  name: Gus
+  kind: procedural
+  look:
+    body: {height: 1.12, head_size: 1.0, torso_width: 1.28, torso_depth: 1.2, limb_thickness: 1.15, leg_length: 0.98, arm_length: 1.02}
+    colors:
+      skin: "#E8B48A"
+      top: "#C0392B"
+      top_accent: "#F4F1EA"
+      bottom: "#5D6D7E"
+      shoes: "#3B3B3B"
+      hair: "#4A3020"
+      eyes: "#2B1A0E"
+      lips: "#A85B45"
+    hair: {style: short}
+    accessories:
+      - {type: beanie, color: "#2E8B57"}
+      - {type: backpack, color: "#E67E22"}
+    clothing: {top: tshirt, top_pattern: stripes, bottom: pants}
+    face: {eye_size: 1.0, brow_thickness: 1.2, mouth_width: 1.1, freckles: false}
+  rig: {type: storyforge_humanoid_v1}
+  voice:
+    elevenlabs: {voice_id: null, labels: {gender: male, age: young}}
+    openai: {voice: ash}
+    piper: {model: en_US-danny-low, speaker: null}
+    espeak: {voice: "en-us+m1", pitch: 42, speed: 150}
+    pitch_semitones: 0.5
+    base_direction: warm, gentle, nervous wobble
+  settings: {walk_style: heavy, idle_energy: 0.55, blink_rate: 1.0, gesture_scale: 1.0}

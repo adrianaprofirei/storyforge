@@ -1,0 +1,137 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://storyforge.dev/schemas/arc.schema.json",
+  "title": "StoryForge arc plan",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "title",
+    "idea",
+    "premise",
+    "parts",
+    "final_payoff"
+  ],
+  "properties": {
+    "arc_id": {
+      "type": "string",
+      "maxLength": 60
+    },
+    "title": {
+      "type": "string",
+      "maxLength": 80
+    },
+    "idea": {
+      "type": "string",
+      "maxLength": 1000
+    },
+    "premise": {
+      "type": "string",
+      "maxLength": 600
+    },
+    "theme": {
+      "type": "string",
+      "maxLength": 200
+    },
+    "final_payoff": {
+      "type": "string",
+      "maxLength": 400
+    },
+    "parts": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "part",
+          "title",
+          "logline",
+          "hook",
+          "escalation",
+          "mini_payoff",
+          "cliffhanger",
+          "location",
+          "time_of_day",
+          "cast"
+        ],
+        "properties": {
+          "part": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5
+          },
+          "title": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "logline": {
+            "type": "string",
+            "maxLength": 300
+          },
+          "hook": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "escalation": {
+            "type": "string",
+            "maxLength": 300
+          },
+          "mini_payoff": {
+            "type": "string",
+            "maxLength": 240
+          },
+          "cliffhanger": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 240
+          },
+          "recap": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 200
+          },
+          "location": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]{0,39}$"
+          },
+          "time_of_day": {
+            "enum": [
+              "morning",
+              "day",
+              "afternoon",
+              "sunset",
+              "evening",
+              "night"
+            ]
+          },
+          "cast": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 6,
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_]{0,39}$"
+            }
+          },
+          "music_mood": {
+            "enum": [
+              "playful",
+              "mysterious",
+              "tense",
+              "sad",
+              "triumphant",
+              "calm",
+              "comedic",
+              "spooky"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

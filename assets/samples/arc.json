@@ -1,0 +1,38 @@
+{
+  "arc_id": "clock_that_stopped",
+  "title": "The Clock That Stopped",
+  "idea": "The Clockwork Club finds a strange map that leads them inside the town clock tower, which has been silent for fifty years.",
+  "premise": "A map hidden in a library book about clocks reveals a secret message in heat-reactive ink. Following it, Milo, Zara and Gus sneak into the stopped clock tower at night to find the 'twelfth gear' and the key that can wake the tower up.",
+  "theme": "Curiosity and teamwork can restart things everyone else gave up on.",
+  "final_payoff": "The friends find the hidden twelfth gear (thanks to Gus's runaway cookie), turn the key, and the tower chimes across Tickton for the first time in fifty years.",
+  "parts": [
+    {
+      "part": 1,
+      "title": "The Moving Map",
+      "logline": "Milo swears a map he found just moved; Zara proves it is heat-reactive ink revealing a secret message about the clock tower.",
+      "hook": "Milo slams a dusty map on the table: 'This map just MOVED!'",
+      "escalation": "Gus's hot cocoa reveals golden hidden lines and a riddle: the key is in the twelfth gear.",
+      "mini_payoff": "Zara explains the 'moving' map: heat-reactive ink.",
+      "cliffhanger": "The clock tower, silent for fifty years, chimes once - right after they decide to go in tonight.",
+      "recap": null,
+      "location": "library",
+      "time_of_day": "afternoon",
+      "cast": ["milo", "zara", "gus"],
+      "music_mood": "mysterious"
+    },
+    {
+      "part": 2,
+      "title": "The Twelfth Gear",
+      "logline": "Inside the dark tower the friends count only eleven gears, until Gus's runaway cookie reveals the hidden twelfth gear and its key.",
+      "hook": "In the dark, Gus's flashlight dies: 'And I can hear ticking.'",
+      "escalation": "Zara counts the gears: there is no twelfth gear. The map lied?",
+      "mini_payoff": "Gus's cookie rolls into a gap behind the clock face, revealing the twelfth gear and an old brass key.",
+      "cliffhanger": null,
+      "recap": "Previously: the moving map, the riddle of the twelfth gear, and the tower's impossible chime.",
+      "location": "clock_tower",
+      "time_of_day": "night",
+      "cast": ["milo", "zara", "gus"],
+      "music_mood": "spooky"
+    }
+  ]
+}

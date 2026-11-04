@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://storyforge.dev/schemas/continuity_check.schema.json",
+  "title": "Contradictions between a screenplay and the series bible",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "issues"
+  ],
+  "properties": {
+    "issues": {
+      "type": "array",
+      "maxItems": 30,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "beat_id",
+          "kind",
+          "severity",
+          "message"
+        ],
+        "properties": {
+          "beat_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "kind": {
+            "enum": [
+              "relationship",
+              "forgotten_event",
+              "out_of_character",
+              "object",
+              "secret",
+              "location",
+              "content_rule",
+              "other"
+            ]
+          },
+          "severity": {
+            "enum": [
+              "info",
+              "warning",
+              "error"
+            ]
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 400
+          },
+          "suggestion": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 400
+          }
+        }
+      }
+    }
+  }
+}
