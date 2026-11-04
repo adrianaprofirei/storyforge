@@ -93,7 +93,9 @@ def system():
         info["llm"] = get_llm(s).describe()
     except Exception as exc:  # e.g. missing key for a forced provider
         info["llm"] = {"provider": "error", "error": str(exc)}
-    info["tts_available"] = available_providers(s)
+    tts = available_providers(s)
+    info["tts_providers"] = tts
+    info["tts_available"] = [k for k, ok in tts.items() if ok and k != "silent"] if isinstance(tts, dict) else list(tts)
     try:
         info["ffmpeg_capabilities"] = capabilities()
     except Exception as exc:

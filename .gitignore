@@ -40,8 +40,10 @@ dist/
 
 # Frontend
 web/node_modules/
-web/dist/
 web/.vite/
+web/*.tsbuildinfo
+# web/dist is committed on purpose: `storyforge serve` works without Node.js (rebuild: cd web && npm run build)
+!web/dist/
 
 # OS / editors
 .DS_Store

@@ -171,7 +171,7 @@ def build_graphics_ass(part: int | None, part_card: dict, recap: tuple[float, fl
     if recap:
         a, b = recap
         ev.append(f"Dialogue: 1,{ts(a)},{ts(b)},Tag,,0,0,0,,{{\\fad(120,160)}}PREVIOUSLY...")
-    if part:
+    if part and part_card.get("enabled", True):
         txt = part_card.get("text", "PART {n}").replace("{n}", str(part))
         s = story_start + 0.15
         ev.append(f"Dialogue: 2,{ts(s)},{ts(s + seconds)},Badge,,0,0,0,,"

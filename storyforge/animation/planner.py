@@ -151,6 +151,10 @@ def _active_bones(clip: dict, tol_deg: float = 1.5) -> list[str]:
     return active
 
 
+# cast `settings.walk_style` -> amplitude of the locomotion clip (bigger bounce and swing = livelier)
+WALK_STYLE_AMPLITUDE = {"normal": 1.0, "bouncy": 1.25, "brisk": 1.08, "heavy": 0.85, "sneaky": 0.75}
+
+
 def plan_character(cid: str, timeline: dict, blocking: dict, cast_entry: dict, lib: ClipLibrary,
                    props: list[dict], seed: int, extra_events: list[dict] | None = None) -> dict:
     fps = timeline["fps"]
@@ -174,7 +178,9 @@ def plan_character(cid: str, timeline: dict, blocking: dict, cast_entry: dict, l
                        "extrapolation": "HOLD"})
         used.add(idle["name"])
 
-    # locomotion from blocking (speed matched to the path so feet don't slide)
+    # locomotion from blocking (speed matched to the path so feet don't slide). The cast's walk style
+    # scales the motion (arm swing, bob, lean) - never the cadence, which must match the stride.
+    walk_amp = WALK_STYLE_AMPLITUDE.get(str(settings.get("walk_style", "normal")), 1.0)
     for lo in blocking.get("locomotion", []):
         if lo["character"] != cid or lo.get("distance", 0) < 0.05:
             continue
@@ -191,7 +197,7 @@ def plan_character(cid: str, timeline: dict, blocking: dict, cast_entry: dict, l
         reps = dur * fps / (clip["frames"] * scale)
         strips.append({"clip": clip["name"], "track": "locomotion", "start": round(f_of(lo["start"], fps), 2),
                        "repeat": round(max(0.5, reps), 3), "scale": round(scale, 3), "blend_in": 5, "blend_out": 6,
-                       "amplitude": 1.0, "extrapolation": "NOTHING"})
+                       "amplitude": walk_amp if kind != "tiptoe" else min(1.0, walk_amp), "extrapolation": "NOTHING"})
         used.add(clip["name"])
 
     # gestures
