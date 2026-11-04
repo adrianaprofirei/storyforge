@@ -12,6 +12,7 @@ Exaggeration: gesture amplitude and squash & stretch scale with the beat intensi
 from __future__ import annotations
 
 import random
+import re
 
 from storyforge.animation.library import ClipLibrary
 from storyforge_blender.proportions import body_metrics
@@ -59,7 +60,16 @@ def plan_props(timeline: dict, blocking: dict) -> list[dict]:
             if a == "pick_up":
                 segs.append({"t": t + 0.55, "state": "hand", "character": holder, "hand": "R"})
             elif a == "put_down":
-                segs.append({"t": t + 0.45, "state": "world", "pos": rest, "settle": True})
+                pos = rest
+                beat_action = next((b.get("action", "") for b in timeline["beats"] if b["id"] == ev.get("beat")), "")
+                for other in props.values():
+                    if other is p:
+                        continue
+                    if re.search(rf"\bon (the |a |his |her )?{re.escape(other['type'])}\b", beat_action.lower()):
+                        o_rest = _resting_position(other, t, blocking)
+                        if o_rest:
+                            pos = [o_rest[0] + 0.02, o_rest[1] + 0.01, o_rest[2] + 0.006]
+                segs.append({"t": t + 0.45, "state": "world", "pos": pos, "settle": True})
             elif a == "give" and ev.get("to"):
                 segs.append({"t": t + 0.6, "state": "hand", "character": ev["to"], "hand": "R"})
                 holder = ev["to"]
@@ -87,7 +97,45 @@ def plan_props(timeline: dict, blocking: dict) -> list[dict]:
             if on:
                 light = [[0.0, 1.0]]
         out.append({"id": p["id"], "type": p["type"], "owner": owner, "segments": segs, "glow": glow, "light": light})
-    return out
+    return _stow_conflicts(out)
+
+
+def _stow_conflicts(props: list[dict]) -> list[dict]:
+    """One prop per hand: when a character takes a new prop into a hand that is already holding one,
+    the old prop is stowed (pocket/backpack) at that moment."""
+    entries = []
+    for p in props:
+        for s in p["segments"]:
+            if s["state"] == "hand":
+                entries.append((s["t"], s.get("character"), s.get("hand", "R"), p["id"]))
+    entries.sort()
+    for t, ch, hand, pid in entries:
+        for q in props:
+            if q["id"] == pid:
+                continue
+            state = None
+            for s in q["segments"]:
+                if s["t"] <= t:
+                    state = s
+            if state and state["state"] == "hand" and state.get("character") == ch and state.get("hand", "R") == hand \
+                    and state["t"] < t:
+                q["segments"].append({"t": t, "state": "hidden", "stowed": True})
+                q["segments"].sort(key=lambda s: s["t"])
+    return props
+
+
+def _resting_position(prop: dict, t: float, blocking: dict) -> list[float] | None:
+    """Where a prop rests at time t (from its put_down events), if it is lying in the world."""
+    surfaces = blocking.get("surfaces", {})
+    table = surfaces.get("table_top")
+    owner = prop["owner"]
+    hx, hy, _ = blocking["home"].get(owner, [0, 0, 0])
+    rest = [table[0] + (hx - table[0]) * 0.45, table[1] - 0.06, table[2] + 0.005] if table else [hx * 0.9, hy - 0.25, 0.0]
+    state = None
+    for ev in sorted(prop["events"], key=lambda e: e["t"]):
+        if ev["t"] <= t:
+            state = ev["action"]
+    return rest if state in ("put_down", None) and any(e["action"] == "put_down" for e in prop["events"]) else None
 
 
 def _active_bones(clip: dict, tol_deg: float = 1.5) -> list[str]:

@@ -18,7 +18,8 @@ from storyforge.config import BLENDER_PKG_DIR, Settings
 from storyforge.util.proc import ProcessError, run
 
 ENTRY = BLENDER_PKG_DIR / "entry.py"
-NOISE = re.compile(r"^(EGL Error|Fra:\d+ Mem|Read blend:|Blender quit|Warning: Your graphics)")
+NOISE = re.compile(r"^(EGL Error|Fra:\d+ Mem|Read blend:|Blender quit|Warning: Your graphics)|initialization failed|"
+                   r"Error opening (the library|HIP)")
 
 
 class BlenderUnavailable(RuntimeError):
@@ -54,7 +55,7 @@ def run_blender(settings: Settings, command: str, args: list[str], *, on_log: Ca
                 except (IndexError, ValueError):
                     pass
             return
-        if NOISE.match(line):
+        if NOISE.search(line):
             return
         lines.append(line)
         if on_log and (line.startswith("SF_LOG") or "Error" in line or "Traceback" in line):

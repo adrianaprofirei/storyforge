@@ -15,7 +15,9 @@ from storyforge.audio.voice import process_dialogue
 
 SR = dsp.SR
 TARGET_LUFS = -14.0
-CEILING_DBTP = -1.0
+# Delivery spec is <= -1 dBTP in the *encoded* file; lossy AAC adds ~0.2-0.4 dB of inter-sample
+# overshoot, so the master is limited with codec headroom.
+CEILING_DBTP = -1.5
 
 
 def pan_for(character: str, cast: list[str], blocking: dict | None) -> float:

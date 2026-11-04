@@ -89,7 +89,7 @@ def build_scene(spec: dict, episode_dir: Path) -> dict:
     lighting = spec.get("lighting", {})
     build_world(scene, lighting["base"])
     build_sun(scene, lighting["base"], light_coll)
-    build_shot_rig(scene, lighting.get("rigs", []), chars_coll, light_coll)
+    build_shot_rig(scene, lighting.get("rigs", []), chars_coll, light_coll, style=style)
 
     from storyforge_blender import style as style_mod
 

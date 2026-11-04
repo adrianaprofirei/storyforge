@@ -47,6 +47,7 @@ def voice_requests(sp: dict, cast: dict, bible: dict) -> list[tuple[dict, VoiceR
 
 
 class VoicesStage(Stage):
+    code = ("providers/*.py", "providers/tts/*.py", "audio/voice.py")
     name = "voices"
     version = "2"
     weight = 4.0
@@ -120,6 +121,7 @@ class VoicesStage(Stage):
 
 
 class LipSyncStage(Stage):
+    code = ("performance/lipsync.py",)
     name = "lipsync"
     version = "2"
     weight = 2.0

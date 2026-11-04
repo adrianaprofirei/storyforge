@@ -19,6 +19,7 @@ def _bible_story_view(bible: dict) -> dict:
 class ScreenplayStage(Stage):
     """Write the part's screenplay with the LLM (or demo writer) unless one exists; validate it."""
 
+    code = ("story/*.py", "schemas/*.py")
     name = "screenplay"
     version = "1"
     weight = 2.0
@@ -64,6 +65,7 @@ class ScreenplayStage(Stage):
 class ReviewStage(Stage):
     """Story-editor review (rule-based + LLM), then user edits -> screenplay.final.json."""
 
+    code = ("story/*.py", "schemas/*.py")
     name = "review"
     version = "1"
     weight = 2.0

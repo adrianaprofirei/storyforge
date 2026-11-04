@@ -36,6 +36,7 @@ def recap_info(ctx) -> dict | None:
 
 
 class CaptionsStage(Stage):
+    code = ("captions/*.py",)
     name = "captions"
     version = "1"
     weight = 0.2
@@ -107,6 +108,7 @@ def assemble_sequence(ctx, preset: str, n_frames: int) -> Path:
 
 
 class MuxStage(Stage):
+    code = ("render/finishing.py",)
     name = "mux"
     version = MUX_VERSION
     weight = 2.0
@@ -140,15 +142,18 @@ class MuxStage(Stage):
         look = ctx.bible().get("look", {}) or {}
         out_cap, out_clean = self._names(ctx)
         out_cap.parent.mkdir(parents=True, exist_ok=True)
+        from storyforge.lighting.grades import resolve_grade
+
         info = encode_episode(seq_dir=seq, fps=tl["fps"], mix=ctx.path("audio", "mix.wav"),
                               captions_dir=ctx.path("captions"), out_captioned=out_cap, out_clean=out_clean,
-                              grade=look.get("grade", {}) or {}, preset=preset, recap=recap_info(ctx),
+                              grade=resolve_grade(look.get("grade")), preset=preset, recap=recap_info(ctx),
                               log=ctx.log)
         shutil.rmtree(seq, ignore_errors=True)
         return info
 
 
 class QualityStage(Stage):
+    code = ("quality/*.py",)
     name = "quality"
     version = "1"
     weight = 0.5
@@ -178,6 +183,7 @@ class QualityStage(Stage):
 
 
 class DeliverablesStage(Stage):
+    code = ("outputs/*.py", "story/metadata.py")
     name = "deliverables"
     version = "1"
     weight = 0.6

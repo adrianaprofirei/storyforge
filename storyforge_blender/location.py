@@ -18,6 +18,14 @@ BOOK_COLORS = ["#8E3B46", "#2E5E4E", "#1F4E79", "#C9A227", "#6B4E71", "#B5651D",
                "#556B2F", "#D2B48C", "#4B3F72", "#A0522D", "#2F4F4F", "#C06C84"]
 
 
+def geo_append_bm(dst, src):
+    tmp = bpy.data.meshes.new("_wall")
+    src.to_mesh(tmp)
+    src.free()
+    dst.from_mesh(tmp)
+    bpy.data.meshes.remove(tmp)
+
+
 class SetBuilder:
     def __init__(self, scene, mats: MaterialFactory, preset: str, time_of_day: str, seed: int = 11):
         self.scene = scene
@@ -125,6 +133,49 @@ class SetBuilder:
         bmesh.ops.translate(bm, vec=Vector((cx, cy, z0 + h / 2)), verts=bm.verts)
         return self.obj(name, bm, mat, smooth=False)
 
+    def wall_with_window(self, name: str, x0, x1, y, h, mat, win: dict, thickness=0.12):
+        """Back wall (along X at depth y) with a rectangular opening topped by an arch."""
+        wx, wz0, ww, wh = win["x"], win["z0"], win["w"], win["h"]
+        r = ww / 2
+        top = wz0 + wh + r
+        pieces = [
+            (x0, wx - r, 0.0, h),          # left of the opening
+            (wx + r, x1, 0.0, h),          # right of the opening
+            (wx - r, wx + r, 0.0, wz0),    # below
+            (wx - r, wx + r, top, h),      # above
+        ]
+        bm = bmesh.new()
+        for a, b, z_lo, z_hi in pieces:
+            if b - a < 1e-3 or z_hi - z_lo < 1e-3:
+                continue
+            part = bm_rounded_box((b - a, thickness, z_hi - z_lo), 0.0, 0, ((a + b) / 2, y, (z_lo + z_hi) / 2))
+            geo_append_bm(bm, part)
+        # fill the two corners between the arch and the rectangular opening
+        seg = 12
+        for side in (-1, 1):
+            outer = (wx + side * r, wz0 + wh + r)
+            pts = [(wx + side * r, wz0 + wh)]
+            for k in range(seg + 1):
+                a = math.pi / 2 * k / seg
+                pts.append((wx + side * r * math.cos(a), wz0 + wh + r * math.sin(a)))
+            pts.append((wx, top))
+            pts.append(outer)
+            front = [bm.verts.new((px, y - thickness / 2, pz)) for px, pz in pts]
+            back = [bm.verts.new((px, y + thickness / 2, pz)) for px, pz in pts]
+            try:
+                bm.faces.new(front)
+                bm.faces.new(list(reversed(back)))
+            except ValueError:
+                pass
+            for i in range(len(pts)):
+                j = (i + 1) % len(pts)
+                try:
+                    bm.faces.new((front[i], front[j], back[j], back[i]))
+                except ValueError:
+                    pass
+        bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+        return self.obj(name, bm, mat, smooth=False)
+
     def books_shelf(self, name: str, x: float, y: float, width: float, height: float, depth: float, rot_z: float = 0.0):
         frame_mat = self.wood(f"{name}_wood", self.pal["trim"], planks=False)
         pm = geo.PartMesh(name)
@@ -180,7 +231,8 @@ class SetBuilder:
         for v in bm.verts:
             v.co = Vector((v.co.x * w * 1.8, 0.0, v.co.y * h * 1.8 + h * 0.2))
         o = self.obj(name, bm, mat, smooth=False)
-        o.location = (x, y + 1.4, z)
+        o.location = (x, y + 1.4 + (6.0 if tower else 0.0), z)
+        o.scale = (2.6, 1.0, 2.6) if tower else (1.0, 1.0, 1.0)
         o.rotation_euler = (0, 0, math.radians(rot_z))
         if tower:
             tm = self.mats.surface("tower_far", "#2A2638" if self.tod == "night" else "#7A6A8A", "matte")
@@ -191,7 +243,9 @@ class SetBuilder:
             pm.add(bm_cylinder(0.22, 0.05, center=(0, -0.21, 3.0), rot=euler(x=90)), "x", face)
             pm.add(bm_rounded_box((4.0, 0.3, 0.9), 0.02, 1, (1.4, 0.2, 0.45)), "x", tm)
             to = pm.build(self.coll)
-            to.location = (x + w * 0.15, y + 1.1, z - h * 0.55)
+            # a distant silhouette: far behind the window, scaled down, sitting low in the view
+            to.location = (x + w * 0.22, y + 7.0, z - h * 0.62)
+            to.scale = (0.75, 0.75, 0.75)
             to.rotation_euler = (0, 0, math.radians(rot_z))
         return o
 
@@ -246,6 +300,29 @@ class SetBuilder:
         lo = bpy.data.objects.new(f"{name}_light", light)
         self.coll.objects.link(lo)
         lo.location = (x, y, z + 0.17)
+        self.objects[name] = o
+        return o
+
+    def lantern(self, name: str, x, y, z):
+        pm = geo.PartMesh(name)
+        iron = self.mats.surface("iron", "#2B2A30", "metal")
+        glass = self.mats.surface("lantern_glass", "#FFC56B", "plastic", emission=7.0)
+        pm.add(bm_rounded_box((0.16, 0.16, 0.03), 0.01, 1, (0, 0, 0.015)), "x", iron)
+        pm.add(bm_rounded_box((0.12, 0.12, 0.18), 0.01, 1, (0, 0, 0.12)), "x", glass)
+        for sx in (-1, 1):
+            for sy in (-1, 1):
+                pm.add(bm_rounded_box((0.015, 0.015, 0.2), 0.003, 1, (sx * 0.065, sy * 0.065, 0.12)), "x", iron)
+        pm.add(geo.bm_cone(0.1, 0.02, 0.07, center=(0, 0, 0.245), segments=4, rot=euler(z=45)), "x", iron)
+        pm.add(geo.bm_torus(0.03, 0.006, center=(0, 0, 0.3), rot=euler(x=90)), "x", iron)
+        o = pm.build(self.coll)
+        o.location = (x, y, z)
+        light = bpy.data.lights.new(f"{name}_light", "POINT")
+        light.energy = 45.0
+        light.color = (1.0, 0.72, 0.42)
+        light.shadow_soft_size = 0.06
+        lo = bpy.data.objects.new(f"{name}_light", light)
+        self.coll.objects.link(lo)
+        lo.location = (x, y, z + 0.13)
         self.objects[name] = o
         return o
 
@@ -305,7 +382,8 @@ class SetBuilder:
         wall = self.mats.surface("lib_wall", pal["wall"], "matte")
         wains = self.wood("wainscot", pal["trim"], planks=False)
         h = self.loc["wall_height"]
-        self.wall("wall_back", -4.2, 3.0, 4.2, 3.0, h, wall)
+        win = self.loc.get("window", {"x": 0.35, "z0": 1.0, "w": 1.25, "h": 1.55})
+        self.wall_with_window("wall_back", -4.2, 4.2, 3.0, h, wall, win)
         self.wall("wall_left", -4.0, -3.5, -4.0, 3.0, h, wall)
         self.wall("wall_right", 4.0, -3.5, 4.0, 3.0, h, wall)
         self.wall("wainscot_back", -4.2, 2.93, 4.2, 2.93, 0.9, wains, thickness=0.04)
@@ -317,18 +395,18 @@ class SetBuilder:
             self.books_shelf(f"shelf_l{i}", -3.75, y, 1.1, 2.4, 0.38, rot_z=90)
         # arched window on the back wall (right of centre) with the clock tower outside
         frame = self.wood("window_frame", "#F2E6CF", planks=False)
-        self.arched_window("window", 0.35, 2.95, 1.0, 1.25, 1.55, frame)
+        self.arched_window("window", win["x"], 2.93, win["z0"], win["w"], win["h"], frame)
         sky = ("#F7C59F", "#9FD3E6") if self.tod in ("afternoon", "sunset", "evening") else ("#BFE3F2", "#6FB7E0")
         if self.tod == "night":
             sky = ("#1B2347", "#0B0F24")
-        self.window_view("window_view", 0.35, 2.95, 1.9, 1.3, 1.6, sky[1], sky[0], 2.2 if self.tod != "night" else 0.6,
+        self.window_view("window_view", win["x"], 3.4, 1.9, 1.6, 1.8, sky[1], sky[0], 2.0 if self.tod != "night" else 0.5,
                          stars=self.tod == "night")
         rug_mat = self.mats.surface("rug", "#7B2D3A", "cloth", "stripes", "#C9A227")
         rug = bm_cylinder(1.25, 0.012, center=(0, 0.45, 0.006), segments=48)
         self.obj("rug", rug, rug_mat)
         table_mat = self.wood("table_wood", "#7A4A2A", planks=False)
         self.table("reading_table", 0.0, 0.52, 1.1, 0.62, 0.5, table_mat)
-        self.lamp("table_lamp", -0.38, 0.62, 0.5, pal["accent"])
+        self.lamp("table_lamp", 0.44, 0.74, 0.5, pal["accent"])
         for i, (x, y, rz) in enumerate(((-0.95, 1.0, 20), (0.95, 1.0, -20))):
             pm = geo.PartMesh(f"chair_{i}")
             cm = self.wood("chair_wood", "#6B4226", planks=False)
@@ -341,9 +419,9 @@ class SetBuilder:
             o.location = (x, y + 0.6, 0)
             o.rotation_euler = (0, 0, math.radians(rz))
         # book stack + globe props on the table edge for depth
-        bm = bm_rounded_box((0.22, 0.16, 0.05), 0.005, 1, (0.4, 0.62, 0.525))
+        bm = bm_rounded_box((0.22, 0.16, 0.05), 0.005, 1, (0.1, 0.74, 0.525))
         self.obj("book_stack_1", bm, self.mats.surface("book_red", "#8E3B46", "cloth"))
-        bm = bm_rounded_box((0.2, 0.15, 0.04), 0.005, 1, (0.41, 0.6, 0.57), rot=euler(z=12))
+        bm = bm_rounded_box((0.2, 0.15, 0.04), 0.005, 1, (0.11, 0.72, 0.57), rot=euler(z=12))
         self.obj("book_stack_2", bm, self.mats.surface("book_blue", "#1F4E79", "cloth"))
         # posters (generic shapes, no text/brands)
         for i, (x, col) in enumerate(((-0.75, "#E8B33C"), (1.25, "#5FA8D3"))):
@@ -425,8 +503,21 @@ class SetBuilder:
         g = self.gear("gear_twelfth", 0.28, 9, 0.05, hidden, (0.62, 2.95, 0.42), "Y")
         g["sf_hidden_gear"] = True
         crate_mat = self.wood("crate", "#6E4A2E", planks=False)
-        for i, (x, y, s) in enumerate(((2.9, 0.6, 0.45), (3.2, 1.1, 0.35), (2.6, 1.3, 0.3))):
+        for i, (x, y, s) in enumerate(((2.9, 0.6, 0.45), (3.2, 1.1, 0.35), (2.6, 1.3, 0.3), (-1.95, -0.35, 0.4))):
             self.obj(f"crate_{i}", bm_rounded_box((s, s, s), 0.02, 1, (x, y, s / 2)), crate_mat)
+        self.lantern("lantern", -1.95, -0.35, 0.4)
+        # light streaming in through the clock face: a spot between the glass and the iron marks so the
+        # mullions and hands cut visible shafts in the volumetric haze
+        beam = bpy.data.lights.new("clock_beam", "SPOT")
+        beam.energy = 1800.0 if self.tod == "night" else 2600.0
+        beam.color = (0.62, 0.74, 1.0) if self.tod == "night" else (1.0, 0.9, 0.75)
+        beam.spot_size = math.radians(80)
+        beam.spot_blend = 0.6
+        beam.shadow_soft_size = 0.3
+        bo = bpy.data.objects.new("clock_beam", beam)
+        self.coll.objects.link(bo)
+        bo.location = (0.0, 3.095, cz)
+        bo.rotation_euler = (Vector((0.0, -4.0, -cz + 0.6))).to_track_quat("-Z", "Y").to_euler()
 
     def build_hallway(self):
         pal = self.pal

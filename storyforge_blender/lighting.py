@@ -69,7 +69,8 @@ def build_sun(scene, base: dict, collection):
     return obj
 
 
-def build_shot_rig(scene, rigs: list[dict], characters_coll, collection, light_linking: bool = True):
+def build_shot_rig(scene, rigs: list[dict], characters_coll, collection, light_linking: bool = True,
+                   style: str = "stylized_3d"):
     """One key/fill/rim set; transforms, energies and colours keyed (CONSTANT) at each shot start."""
     objs = {}
     for role in ("key", "fill", "rim"):
@@ -95,9 +96,11 @@ def build_shot_rig(scene, rigs: list[dict], characters_coll, collection, light_l
             _aim(obj, spec["target"])
             lkeys.append((f, tuple(obj.location)))
             rkeys.append((f, tuple(obj.rotation_euler)))
-            ekeys.append((f, spec["energy"]))
+            toon = style == "cartoon"
+            # cel shading wants crisp, designed shadow shapes: small sources, a touch more energy
+            ekeys.append((f, spec["energy"] * (0.8 if toon and role == "fill" else 1.0)))
             ckeys.append((f, tuple(spec["color"])))
-            skeys.append((f, spec["size"]))
+            skeys.append((f, spec["size"] * (0.12 if toon and role != "fill" else 1.0)))
         compat.set_vector_keys(obj, "location", lkeys, "CONSTANT")
         compat.set_vector_keys(obj, "rotation_euler", rkeys, "CONSTANT")
         compat.set_keys(obj.data, "energy", 0, ekeys, "CONSTANT")

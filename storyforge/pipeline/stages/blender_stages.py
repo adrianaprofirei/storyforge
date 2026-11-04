@@ -23,11 +23,14 @@ def blender_code_hash() -> str:
 
 
 def grade_for(ctx) -> dict:
+    from storyforge.lighting.grades import resolve_grade
+
     look = ctx.bible().get("look", {}) or {}
-    return look.get("grade", {}) or {}
+    return resolve_grade(look.get("grade"))
 
 
 class SceneSpecStage(Stage):
+    code = ("scene_spec.py", "cinematography/*.py", "lighting/*.py", "performance/*.py")
     name = "scene"
     version = "1"
     weight = 0.3

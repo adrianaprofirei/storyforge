@@ -19,12 +19,23 @@ from pathlib import Path
 from storyforge.pipeline.cache import StageRecords, stage_key
 from storyforge.pipeline.context import EpisodeContext
 
+PKG_DIR = Path(__file__).resolve().parents[1]
+
+
+def code_hash(*patterns: str) -> str:
+    """Hash of the backend source files a stage depends on (so code changes invalidate caches)."""
+    from storyforge.util.hashing import tree_hash
+
+    return tree_hash(PKG_DIR, patterns)
+
 
 class Stage:
     name: str = "stage"
     version: str = "1"
     # rough share of total runtime, used for progress bars and ETAs
     weight: float = 1.0
+    # backend source globs (relative to the storyforge package) whose changes invalidate this stage
+    code: tuple[str, ...] = ()
 
     def inputs(self, ctx: EpisodeContext) -> dict:
         return {}
@@ -70,6 +81,8 @@ def run_episode(ctx: EpisodeContext, stages: list[Stage] | None = None) -> list[
             continue
         ctx._stage_weight = (done_w / total_w, (done_w + st.weight) / total_w)
         inputs = st.inputs(ctx)
+        if st.code:
+            inputs = {"_inputs": inputs, "_code": code_hash(*st.code)}
         key = stage_key(st.name, st.version, inputs)
         outputs = st.outputs(ctx)
         if st.name not in ctx.options.force and records.is_fresh(st.name, key, outputs):

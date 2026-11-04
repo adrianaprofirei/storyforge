@@ -17,6 +17,7 @@ def _is_finale(ctx) -> bool:
 
 
 class TimelineStage(Stage):
+    code = ("timeline.py", "staging.py")
     name = "timeline"
     version = "2"
     weight = 0.3
@@ -53,6 +54,7 @@ class TimelineStage(Stage):
 
 
 class ShotsStage(Stage):
+    code = ("cinematography/*.py", "staging.py")
     name = "shots"
     version = "2"
     weight = 0.3
@@ -77,6 +79,7 @@ class ShotsStage(Stage):
 class PerformanceStage(Stage):
     """Body performance plan (NLA strips, props, extras) + facial performance (M3) per character."""
 
+    code = ("animation/*.py", "performance/*.py", "staging.py")
     name = "performance"
     version = "1"
     weight = 0.6

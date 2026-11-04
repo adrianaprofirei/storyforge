@@ -18,7 +18,7 @@ import bpy
 
 from storyforge_blender.geo import Nodes, hex_rgba, mix_rgba, scale_rgba
 
-SHADOW_TINT = (0.36, 0.38, 0.62, 1.0)
+SHADOW_TINT = (0.58, 0.56, 0.8, 1.0)
 
 
 class MaterialFactory:
@@ -131,7 +131,7 @@ class MaterialFactory:
         darkest = n.node("ShaderNodeMix", data_type="RGBA", blend_type="MULTIPLY", clamp_factor=True)
         darkest.inputs["Factor"].default_value = 1.0
         n._in(darkest, 6, shadow.outputs[2])
-        darkest.inputs[7].default_value = (0.7, 0.7, 0.8, 1)
+        darkest.inputs[7].default_value = (0.8, 0.8, 0.88, 1)
         col = n.mix_color(n.smooth_step(0.0, 0.3, lit), darkest.outputs[2], col)
         # rim band
         lw = n.node("ShaderNodeLayerWeight")

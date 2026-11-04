@@ -116,7 +116,7 @@ def encode_episode(*, seq_dir: Path, fps: int, mix: Path, captions_dir: Path, ou
     common_out = ["-map", "0:v:0", "-map", "1:a:0", "-c:v", "libx264", "-profile:v", "high", "-level:v", "4.2"
                   if size[1] <= 1920 else "5.2", "-preset", X264_PRESET.get(preset, "medium"), "-crf",
                   str(CRF.get(preset, 20)), "-pix_fmt", "yuv420p", "-color_primaries", "bt709", "-color_trc", "bt709",
-                  "-colorspace", "bt709", "-c:a", "aac", "-b:a", "192k", "-ar", "48000", "-ac", "2",
+                  "-colorspace", "bt709", "-c:a", "aac", "-b:a", "256k", "-ar", "48000", "-ac", "2",
                   "-movflags", "+faststart", "-shortest"]
     gfx = "graphics.ass" if (work / "graphics.ass").is_file() else None
     filters_clean = [_sub_filter(gfx)] if gfx and caps["libass"] else []

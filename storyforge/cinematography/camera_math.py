@@ -101,8 +101,8 @@ SHOT_SPANS = {
 SHOT_SIZE_ORDER = ["extreme_close_up", "close_up", "medium_close", "over_the_shoulder", "medium", "two_shot",
                    "medium_wide", "wide", "establishing_wide"]
 DEFAULT_LENS = {
-    "establishing_wide": 24, "wide": 28, "medium_wide": 32, "two_shot": 35, "medium": 40,
-    "over_the_shoulder": 50, "medium_close": 50, "close_up": 65, "extreme_close_up": 85, "insert": 60,
+    "establishing_wide": 24, "wide": 28, "medium_wide": 40, "two_shot": 40, "medium": 50,
+    "over_the_shoulder": 60, "medium_close": 60, "close_up": 75, "extreme_close_up": 100, "insert": 65,
 }
 DEFAULT_FSTOP = {
     "establishing_wide": 8.0, "wide": 5.6, "medium_wide": 4.0, "two_shot": 4.0, "medium": 2.8,

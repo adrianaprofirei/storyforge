@@ -105,12 +105,29 @@ def configure(scene, preset: str, style: str, device: str = "AUTO", fps: int | N
                          caustics_reflective=False, caustics_refractive=False, blur_glossy=1.0,
                          sample_clamp_indirect=8.0, use_light_tree=True)
         info["device"] = f"{gpu['type']} {', '.join(gpu['devices'])}".strip()
+    if style == "cartoon":
+        scale_lineart(scene, p["resolution"][1])
+    if not p["volumetrics"] and scene.world is not None and scene.world.node_tree is not None:
+        # proxy renders skip the (expensive) world volume; the saved .blend keeps it
+        nt = scene.world.node_tree
+        out = next((n for n in nt.nodes if n.bl_idname == "ShaderNodeOutputWorld"), None)
+        if out is not None:
+            for link in list(out.inputs["Volume"].links):
+                nt.links.remove(link)
     color_management(scene, style)
     return info
 
 
 def color_management(scene, style: str) -> None:
     vs = scene.view_settings
+    if style == "cartoon":
+        # flat, vivid 2D colours: no filmic highlight roll-off on a cel-shaded image
+        vs.view_transform = "Standard"
+        vs.look = "None"
+        vs.exposure = 0.0
+        vs.gamma = 1.0
+        scene.display_settings.display_device = "sRGB"
+        return
     try:
         vs.view_transform = "AgX"
     except TypeError:
@@ -127,3 +144,15 @@ def color_management(scene, style: str) -> None:
     vs.gamma = 1.0
     scene.display_settings.display_device = "sRGB"
     compat.set_props(scene.sequencer_colorspace_settings, name="sRGB")
+
+
+def scale_lineart(scene, res_y: int, base_px: int = 3, base_res: int = 960) -> None:
+    """GPv2 (Blender 4.2) Line Art thickness is in pixels: keep lines proportional to the frame.
+    GPv3 (4.3+) uses a world-space radius that already scales with resolution."""
+    for obj in scene.objects:
+        mods = getattr(obj, "grease_pencil_modifiers", None)
+        if not mods:
+            continue
+        for m in mods:
+            if m.type == "GP_LINEART":
+                m.thickness = max(1, int(round(base_px * res_y / base_res)))

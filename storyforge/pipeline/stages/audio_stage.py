@@ -12,6 +12,7 @@ MIX_VERSION = "1"
 
 
 class AudioMixStage(Stage):
+    code = ("audio/*.py",)
     name = "audio_mix"
     version = MIX_VERSION
     weight = 1.5

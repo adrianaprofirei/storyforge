@@ -85,9 +85,18 @@ def build_clip_action(rig, clip: dict, name: str, amplitude: float = 1.0, bones:
                 keys[c].append((float(i), loc[c]))
         for c in range(3):
             compat.set_keys(rig, 'pose.bones["hips"].location', c, keys[c], "LINEAR", group="hips")
-    adt.action = prev
+    _restore(rig, prev)
     act.use_fake_user = False
     return act
+
+
+def _restore(rig, prev):
+    """Re-assign the previously active action (and its slot on Blender 4.4+)."""
+    adt = rig.animation_data
+    if prev is None:
+        adt.action = None
+        return
+    compat.assign_action(rig, prev)
 
 
 def _track(rig, name: str):
@@ -145,7 +154,8 @@ def order_tracks(rig):
 def apply_strips(rig, plan: dict, clips: dict, relaxed: dict, char_id: str):
     hip_h = float(plan.get("hip_height", 0.43))
     adt = rig.animation_data or rig.animation_data_create()
-    adt.action = None
+    # NOTE: the active action is kept: it carries the root-motion path, squash keys and IK targets and
+    # is evaluated on top of the NLA stack for exactly those channels.
     # create tracks bottom->top in the canonical order so the stacking is right
     for name in TRACK_ORDER[:4]:
         if not any(t.name == name for t in adt.nla_tracks):
@@ -322,7 +332,7 @@ def collision_fix(scene, rig, metrics: dict, frame_start: int, frame_end: int, r
         for c in range(4):
             compat.set_keys(rig, f'pose.bones["upper_arm.{side}"].rotation_quaternion', c, keys[c], "BEZIER",
                             group=f"upper_arm.{side}")
-    adt.action = prev
+    _restore(rig, prev)
     add_strip(rig, "correction", act, act.frame_range[0], blend_type="COMBINE", extrapolation="NOTHING")
     return hits
 
@@ -379,7 +389,7 @@ def secondary_motion(scene, rig, frame_start: int, frame_end: int, fps: int, bon
             if child:
                 compat.set_keys(rig, f'pose.bones["{child}"].rotation_quaternion', c, child_keys[c], "LINEAR", group=child)
         del pb
-    adt.action = prev
+    _restore(rig, prev)
     add_strip(rig, "secondary", act, act.frame_range[0], blend_type="COMBINE", extrapolation="NOTHING")
     return len(present)
 
@@ -432,5 +442,5 @@ def look_layer(rig, look: dict, neck_share: float = 0.3):
                 keys[c].append((float(f), q[c]))
         for c in range(4):
             compat.set_keys(rig, f'pose.bones["{bone}"].rotation_quaternion', c, keys[c], "BEZIER", group=bone)
-    adt.action = prev
+    _restore(rig, prev)
     return add_strip(rig, "look", act, act.frame_range[0], blend_type="COMBINE", extrapolation="HOLD")

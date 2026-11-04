@@ -26,7 +26,7 @@ TIME_PRESETS = {
     #            sun_k  sun_elev sun_strength sky_top     sky_bottom  world_str key_k  ratio  rim_k  vol
     "morning":   (5200, 18, 3.0, "#9CC9EB", "#F6E3C8", 0.55, 5200, 2.8, 4000, 0.0),
     "day":       (5600, 55, 4.0, "#7DB6E8", "#E6F0F7", 0.65, 5600, 2.5, 6500, 0.0),
-    "afternoon": (4500, 32, 3.5, "#8DBBE0", "#F5D7B2", 0.5, 4500, 3.0, 3200, 0.004),
+    "afternoon": (4000, 30, 6.0, "#8DBBE0", "#F5D7B2", 0.42, 5600, 3.6, 3200, 0.004),
     "sunset":    (3200, 8, 3.0, "#5B5E9E", "#F59E6B", 0.4, 3200, 3.5, 2700, 0.006),
     "evening":   (8000, 25, 0.4, "#1E2A5A", "#45507E", 0.18, 3200, 4.0, 8000, 0.008),
     "night":     (10000, 42, 0.9, "#0B1030", "#1B2347", 0.1, 8000, 5.0, 10000, 0.02),
@@ -41,7 +41,7 @@ def base_lighting(location: dict, time_of_day: str, interior: bool) -> dict:
     return {
         "time_of_day": time_of_day,
         "world": {"top": top, "bottom": bottom, "strength": world * (0.7 if interior else 1.0)},
-        "sun": {"azimuth": az + (180 if interior else 0), "elevation": elev, "color": KELVIN[sun_k],
+        "sun": {"azimuth": location.get("sun_dir", az + (180 if interior else 0)), "elevation": elev, "color": KELVIN[sun_k],
                 "strength": sun_str * (0.8 if interior else 1.0), "angle": 2.0 if time_of_day != "night" else 1.0},
         "volumetrics": {"density": vol, "anisotropy": 0.55, "color": KELVIN[rim_k]} if vol > 0 else None,
         "key_color": KELVIN[key_k], "rim_color": KELVIN[rim_k], "ratio": ratio,
@@ -72,7 +72,7 @@ def shot_rig(shot: dict, beat: dict | None, base: dict, location: dict) -> dict:
         e = math.radians(elev_deg)
         return [subj[0] + d[0] * r * math.cos(e), subj[1] + d[1] * r * math.cos(e), hz + r * math.sin(e)]
 
-    rim_boost = 1.6 if base["night"] else 1.15
+    rim_boost = 2.2 if base["night"] else 1.7
     return {
         "key": {"position": place(key_dir, 32, dist), "target": subj, "energy": round(key_energy, 1),
                 "color": base["key_color"], "size": 1.1 * size_scale},

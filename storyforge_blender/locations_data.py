@@ -29,8 +29,10 @@ LOCATIONS: dict[str, dict] = {
                   "left": (-1.0, 0.2), "right": (1.0, 0.2), "table": (0.0, 0.55), "offscreen_left": (-4.5, 0.4),
                   "offscreen_right": (4.5, 0.4)},
         "surfaces": {"table_top": (0.0, 0.52, 0.5)},
-        "key_dir": 55.0,
-        "palette": {"wall": "#C9B48F", "trim": "#6B4226", "floor": "#8A5A3B", "accent": "#2F6B4F"},
+        "key_dir": -40.0,          # warm interior key from front-left; the sunlit window is the rim (back-right)
+        "window": {"x": 0.35, "z0": 1.0, "w": 1.25, "h": 1.55},
+        "sun_dir": 168.0,          # afternoon sun streams in through the window behind the group
+        "palette": {"wall": "#B49D7A", "trim": "#5E3B22", "floor": "#6E4A33", "accent": "#2F6B4F"},
         "dressing": ["bookshelves", "reading_table", "lamps", "arched_window", "posters", "rug", "chairs"],
     },
     "clock_tower": {
@@ -51,7 +53,8 @@ LOCATIONS: dict[str, dict] = {
                   "left": (-1.1, 0.2), "right": (1.1, 0.2), "gap": (0.6, 2.4), "start": (-0.2, -1.6),
                   "offscreen_left": (-4.8, 0.6), "offscreen_right": (4.8, 0.6)},
         "surfaces": {"floor": (0.0, 0.3, 0.0)},
-        "key_dir": 160.0,
+        "key_dir": -50.0,          # warm lantern key front-left; moonlight through the clock face is the rim
+        "sun_dir": 180.0,          # moonlight comes through the clock face
         "palette": {"wall": "#3E3A4A", "trim": "#5A3E2B", "floor": "#6B4B33", "accent": "#C8A04A"},
         "dressing": ["clock_face", "gears", "beams", "stairs", "dust"],
     },

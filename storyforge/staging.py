@@ -95,10 +95,24 @@ def plan_blocking(timeline: dict, cast_registry: dict, location: dict) -> dict:
                            "from": [cur[1], cur[2]], "to": list(target)})
     metrics = {cid: body_metrics((cast_registry.get(cid) or {}).get("look", {}).get("body"))
                for cid in cast}
+
+    def top_extra(cid: str) -> float:
+        """Hair / hats rise above the head box: framing must leave room for them."""
+        look = (cast_registry.get(cid) or {}).get("look", {}) or {}
+        style = (look.get("hair") or {}).get("style", "short")
+        hats = {a.get("type") for a in look.get("accessories") or [] if isinstance(a, dict)}
+        extra = {"spiky": 0.3, "bun": 0.22, "curly": 0.18, "ponytail": 0.06, "bob": 0.06}.get(style, 0.06)
+        if hats & {"beanie", "cap"}:
+            extra = max(extra, 0.3)
+        if "goggles" in hats:
+            extra = max(extra, 0.12)
+        return extra * metrics[cid]["head_size"]
     return {"location": loc["preset"], "home": {c: list(v) for c, v in home.items()},
             "paths": paths, "locomotion": locomotion, "marks": {k: list(v) for k, v in marks.items()},
             "heights": {c: {"head_center": m["head_center"], "eye_z": m["eye_z"], "head_top": m["head_top"],
-                            "chest_z": m["chest_z"], "hip_z": m["hip_z"], "head_size": m["head_size"]}
+                            "chest_z": m["chest_z"], "hip_z": m["hip_z"], "head_size": m["head_size"],
+                            "shoulder_z": m["shoulder_z"], "knee_z": m["knee_z"], "mouth_z": m["mouth_z"],
+                            "neck_base": m["neck_base"], "top": m["head_top"] + top_extra(c)}
                         for c, m in metrics.items()},
             "surfaces": {k: list(v) for k, v in loc.get("surfaces", {}).items()}}
 
