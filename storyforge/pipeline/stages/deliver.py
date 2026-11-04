@@ -171,7 +171,8 @@ class QualityStage(Stage):
         return {"video": maybe_file_hash(out_cap), "analysis": maybe_file_hash(ctx.path("scene", "analysis.json")),
                 "timeline": maybe_file_hash(ctx.path("timeline.json")), "shots": maybe_file_hash(ctx.path("shotlist.json")),
                 "mix": maybe_file_hash(ctx.path("audio", "mix.wav")),
-                "layout": maybe_file_hash(ctx.path("captions", "layout.json")), "preset": p}
+                "layout": maybe_file_hash(ctx.path("captions", "layout.json")),
+                "continuity": maybe_file_hash(ctx.path("continuity.json")), "preset": p}
 
     def outputs(self, ctx):
         return [ctx.path("quality", f"report_{ctx.options.preset}.json")]
@@ -219,3 +220,13 @@ class DeliverablesStage(Stage):
         meta = write_metadata(ctx, out / f"{ctx.episode_id}_metadata.json")
         blend = export_blend(ctx, out / f"{ctx.episode_id}.blend")
         return {"thumbnails": [str(t) for t in thumbs], "titles": meta.get("titles", [])[:1], "blend": str(blend)}
+
+    def on_complete(self, ctx, status):
+        p = ctx.options.preset
+        if ctx.options.max_frames or ctx.options.duration_limit:
+            return  # debug/smoke renders do not count as a finished episode
+        meta = ctx.meta()
+        presets = sorted(set(meta.get("rendered_presets", [])) | {p})
+        if meta.get("status") != "rendered" or meta.get("rendered_presets") != presets:
+            ctx.project.save_episode_meta(ctx.episode_id, {"status": "rendered", "rendered_presets": presets})
+        ctx.project.mark_episode_rendered(ctx.episode_id, p, str(ctx.path("output", f"{ctx.episode_id}_{p}.mp4")))

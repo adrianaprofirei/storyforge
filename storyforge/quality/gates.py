@@ -80,6 +80,25 @@ def gate_runtime(timeline: dict, bible: dict, limited: bool) -> Gate:
     return Gate("runtime", "warn", f"{d:.1f}s outside {lo:.0f}-{hi:.0f}s")
 
 
+def gate_continuity(report: dict | None) -> Gate:
+    if not report:
+        return Gate("continuity", "skip", "no continuity check")
+    counts = report.get("counts", {})
+    issues = report.get("issues", [])
+    open_issues = [i for i in issues if i.get("status") == "open"]
+    fixed = [i for i in issues if i.get("status") == "auto_fixed"]
+    status = "fail" if counts.get("error") else ("warn" if counts.get("warning") else "pass")
+    summary = (f"{counts.get('error', 0)} errors, {counts.get('warning', 0)} warnings, {counts.get('info', 0)} notes "
+               f"against {len(report.get('checked_against', []))} earlier episodes")
+    if fixed:
+        summary += f"; {len(fixed)} auto-fixed ({', '.join(sorted({i['beat_id'] for i in fixed if i.get('beat_id')}))})"
+    fix = None
+    if status == "fail":
+        fix = {"action": "edit_beats", "beats": sorted({i["beat_id"] for i in open_issues
+                                                        if i.get("beat_id") and i["severity"] == "error"})}
+    return Gate("continuity", status, summary, open_issues + fixed, fix)
+
+
 def run_gates(ctx) -> dict:
     p = ctx.options.preset
     tl = read_json(ctx.path("timeline.json"))
@@ -90,6 +109,7 @@ def run_gates(ctx) -> dict:
     gates.append(gate_loudness(mix, video if video.is_file() else None))
     gates.append(gate_captions_safe_area(read_json(ctx.path("captions", "layout.json"), {"lines": []})))
     gates.append(gate_runtime(tl, ctx.bible(), bool(ctx.options.duration_limit)))
+    gates.append(gate_continuity(read_json(ctx.path("continuity.json"), None)))
     try:
         from storyforge.quality import animation_gates
 

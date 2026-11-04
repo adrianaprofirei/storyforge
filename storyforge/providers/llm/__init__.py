@@ -3,9 +3,16 @@
 from __future__ import annotations
 
 from storyforge.config import Settings
-from storyforge.providers.llm.base import LLMError, LLMProvider, LLMUnavailable, extract_json
+from storyforge.providers.llm.base import (
+    LLMError,
+    LLMProvider,
+    LLMRefused,
+    LLMTruncated,
+    LLMUnavailable,
+    extract_json,
+)
 
-__all__ = ["get_llm", "LLMProvider", "LLMError", "LLMUnavailable", "extract_json"]
+__all__ = ["get_llm", "LLMProvider", "LLMError", "LLMRefused", "LLMTruncated", "LLMUnavailable", "extract_json"]
 
 
 def get_llm(settings: Settings) -> LLMProvider:

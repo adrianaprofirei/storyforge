@@ -3,6 +3,7 @@
     storyforge demo [--preset draft] [--parts 1,2]      bundled sample arc -> MP4s (no API keys needed)
     storyforge run --series ID --episode ID [...]      run/resume one part's pipeline (cached)
     storyforge plan-arc --series ID --idea "..."       plan a 2-5 part arc with the LLM
+    storyforge arc --series ID --arc ID [...]          run all parts of an arc in order
     storyforge serve                                   web UI + API + render queue
     storyforge doctor                                  check tools, GPU and providers
     storyforge assets                                  (re)generate the built-in SFX/music/clip library
@@ -122,6 +123,24 @@ def cmd_plan_arc(args) -> int:
     return 0
 
 
+def cmd_arc(args) -> int:
+    """Run every part of an arc in order (parts 2+ build on the continuity log of earlier parts)."""
+    from storyforge.project import Project
+
+    project = Project.open(args.series)
+    arc = project.arc(args.arc)
+    if arc is None:
+        print(f"unknown arc '{args.arc}'; known: {[a['arc_id'] for a in project.arcs()]}", file=sys.stderr)
+        return 2
+    parts = {int(p) for p in args.parts.split(",")} if args.parts else {p["part"] for p in arc["parts"]}
+    for p in arc["parts"]:
+        if p["part"] in parts:
+            eid = project.episode_id_for(arc["arc_id"], p["part"])
+            print(f"\n=== {eid} (part {p['part']}/{len(arc['parts'])}) ===", flush=True)
+            run_part(project, eid, args)
+    return 0
+
+
 def cmd_serve(args) -> int:
     import uvicorn
 
@@ -164,6 +183,11 @@ def main(argv: list[str] | None = None) -> int:
     pa.add_argument("--series", required=True)
     pa.add_argument("--idea", required=True)
     pa.add_argument("--parts", type=int, default=2)
+    ar = sub.add_parser("arc", help="run all parts of an arc in order (e.g. --until continuity_log to only write)")
+    _add_run_opts(ar)
+    ar.add_argument("--series", required=True)
+    ar.add_argument("--arc", required=True)
+    ar.add_argument("--parts", help="e.g. 1 or 1,2")
     sv = sub.add_parser("serve")
     sv.add_argument("--host")
     sv.add_argument("--port", type=int)
@@ -172,7 +196,7 @@ def main(argv: list[str] | None = None) -> int:
     if hasattr(args, "preset") and args.preset is None:
         args.preset = get_settings().render_preset
     return {"demo": cmd_demo, "run": cmd_run, "doctor": cmd_doctor, "schemas": cmd_schemas, "assets": cmd_assets,
-            "plan-arc": cmd_plan_arc, "serve": cmd_serve}[args.cmd](args)
+            "plan-arc": cmd_plan_arc, "arc": cmd_arc, "serve": cmd_serve}[args.cmd](args)
 
 
 if __name__ == "__main__":

@@ -10,6 +10,7 @@ from storyforge.models.constants import (
     GESTURES,
     LOCOMOTION,
     MUSIC_MOODS,
+    OBJECT_STATUSES,
     PACES,
     PROP_ACTIONS,
     PROPS,
@@ -198,6 +199,33 @@ CONTINUITY_ENTRY = {
             },
         },
         "open_threads": {"type": "array", "maxItems": 10, "items": {"type": "string", "maxLength": 240}},
+        "object_states": {
+            "type": "array", "maxItems": 12,
+            "description": "Where important objects are at the END of the episode (who holds them, their state)",
+            "items": {"type": "object", "additionalProperties": False, "required": ["object", "holder", "status"],
+                      "properties": {"object": {"type": "string", "maxLength": 40},
+                                     "holder": {**NULLABLE_ID, "description": "cast id, or null if nobody holds it"},
+                                     "status": {"enum": OBJECT_STATUSES},
+                                     "note": {"type": "string", "maxLength": 160}}}},
+        "character_states": {
+            "type": "array", "maxItems": 10,
+            "description": "Lasting changes to a character (injury, new skill, mood, secret learned)",
+            "items": {"type": "object", "additionalProperties": False, "required": ["character", "state"],
+                      "properties": {"character": ID, "state": {"type": "string", "maxLength": 200}}}},
+    },
+}
+
+CONTINUITY_FIX = {
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://storyforge.dev/schemas/continuity_fix.schema.json",
+    "title": "Beat rewrites that resolve continuity problems",
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["rewrites", "notes"],
+    "properties": {
+        "rewrites": {"type": "array", "maxItems": 12, "items": BEAT,
+                     "description": "Full replacement beats (same id) for the beats that contradict continuity"},
+        "notes": {"type": "array", "maxItems": 12, "items": {"type": "string", "maxLength": 300}},
     },
 }
 
@@ -331,6 +359,7 @@ ALL_SCHEMAS = {
     "review": REVIEW,
     "continuity": CONTINUITY_ENTRY,
     "continuity_check": CONTINUITY_CHECK,
+    "continuity_fix": CONTINUITY_FIX,
     "metadata": METADATA,
     "cast_member": CAST_MEMBER,
     "bible": BIBLE,

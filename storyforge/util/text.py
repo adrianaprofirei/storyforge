@@ -9,9 +9,17 @@ _WORD_RE = re.compile(r"[A-Za-z0-9À-ɏ']+(?:[-'][A-Za-z0-9À-ɏ]+)*|[^\sA-Za-z0
 
 
 def slugify(text: str, max_len: int = 48) -> str:
+    """ASCII snake_case id that starts with a letter, cut at a word boundary when possible."""
     t = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
+    t = re.sub(r"'", "", t)
     t = re.sub(r"[^a-zA-Z0-9]+", "_", t).strip("_").lower()
-    return (t or "item")[:max_len]
+    if t and not t[0].isalpha():
+        t = "x_" + t
+    t = t or "item"
+    if len(t) > max_len:
+        cut = t[:max_len]
+        t = cut.rsplit("_", 1)[0] if "_" in cut[max_len // 2:] else cut
+    return t.strip("_") or "item"
 
 
 def split_words(line: str) -> list[str]:

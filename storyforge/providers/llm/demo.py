@@ -17,10 +17,11 @@ class DemoLLM(LLMProvider):
     def chat(self, system, messages, schema, max_tokens):  # pragma: no cover - not used
         raise NotImplementedError("demo provider only supports generate_json")
 
-    def generate_json(self, task, system, user, schema_name, semantic_check=None, max_tokens=16000, context=None):
+    def generate_json(self, task, system, user, schema_name, semantic_check=None, max_tokens=16000, context=None,
+                      cache=True, variation=0):
         from storyforge.story.demo_writer import demo_generate
 
-        doc = demo_generate(task, context or {})
+        doc = demo_generate(task, {**(context or {}), "variation": variation})
         errors = schema_errors(schema_name, doc)
         if not errors and semantic_check:
             errors = semantic_check(doc)

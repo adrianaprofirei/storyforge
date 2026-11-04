@@ -33,6 +33,9 @@ PROPS = [
     "notebook", "magnifying_glass", "apple", "umbrella", "camera", "gear", "letter", "cookie", "gadget",
 ]
 PROP_ACTIONS = ["hold", "pick_up", "put_down", "use", "give", "show", "drop"]
+# continuity: where an object ends up after an episode
+OBJECT_STATUSES = ["has", "lost", "broken", "hidden", "given_away", "destroyed", "found", "returned",
+                   "stored"]
 
 EMOTION_FX = [
     "sweat_drop", "tears", "anger_mark", "blush", "sparkles", "question_mark", "shock_lines",

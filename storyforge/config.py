@@ -134,6 +134,7 @@ class Settings:
     openai_api_key: str
     openai_model: str
     openai_base_url: str
+    openai_reasoning_effort: str
     llm_max_attempts: int
     tts_provider: str
     elevenlabs_api_key: str
@@ -171,6 +172,7 @@ class Settings:
             openai_api_key=_env("OPENAI_API_KEY"),
             openai_model=_env("OPENAI_MODEL", "gpt-5.5"),
             openai_base_url=_env("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/"),
+            openai_reasoning_effort=_env("OPENAI_REASONING_EFFORT", "").lower(),
             llm_max_attempts=max(1, _env_int("LLM_MAX_ATTEMPTS", 4)),
             tts_provider=_env("TTS_PROVIDER", "auto").lower(),
             elevenlabs_api_key=_env("ELEVENLABS_API_KEY"),

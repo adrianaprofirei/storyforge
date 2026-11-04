@@ -49,6 +49,9 @@ class Stage:
     def run(self, ctx: EpisodeContext) -> dict | None:
         raise NotImplementedError
 
+    def on_complete(self, ctx: EpisodeContext, status: str) -> None:
+        """Called after the stage ran or was served from cache (idempotent bookkeeping)."""
+
 
 @dataclass
 class StageReport:
@@ -64,6 +67,19 @@ def default_stages() -> list[Stage]:
     from storyforge.pipeline.stages import ALL_STAGES
 
     return [cls() for cls in ALL_STAGES]
+
+
+def _flush_llm_calls(ctx: EpisodeContext, stage: str, start: int) -> None:
+    """Append the LLM calls a stage made (task, attempts, tokens, served model) to llm_calls.jsonl."""
+    llm = getattr(ctx, "_llm", None)
+    if llm is None or len(llm.calls) <= start:
+        return
+    import json
+    from dataclasses import asdict
+
+    with open(ctx.path("llm_calls.jsonl"), "a", encoding="utf-8") as fh:
+        for call in llm.calls[start:]:
+            fh.write(json.dumps({"t": round(time.time(), 1), "stage": stage, **asdict(call)}) + "\n")
 
 
 def run_episode(ctx: EpisodeContext, stages: list[Stage] | None = None) -> list[StageReport]:
@@ -88,22 +104,27 @@ def run_episode(ctx: EpisodeContext, stages: list[Stage] | None = None) -> list[
         if st.name not in ctx.options.force and records.is_fresh(st.name, key, outputs):
             reports.append(StageReport(st.name, "cached", key=key))
             ctx.log("cached")
+            st.on_complete(ctx, "cached")
         else:
             ctx.log("running")
             ctx.progress(0.0, "start")
             t0 = time.time()
+            n_calls = len(ctx._llm.calls) if getattr(ctx, "_llm", None) is not None else 0
             try:
                 info = st.run(ctx) or {}
             except Exception as exc:
                 reports.append(StageReport(st.name, "failed", time.time() - t0, key, error=str(exc)))
                 ctx.log(f"FAILED: {exc}")
+                _flush_llm_calls(ctx, st.name, n_calls)
                 raise
+            _flush_llm_calls(ctx, st.name, n_calls)
             seconds = time.time() - t0
             # outputs may depend on what run() produced (e.g. file names); re-query
             outputs = st.outputs(ctx)
             records.put(st.name, key, outputs, seconds, {"info": info})
             reports.append(StageReport(st.name, "ran", seconds, key, info))
             ctx.log(f"done in {seconds:.1f}s")
+            st.on_complete(ctx, "ran")
         done_w += st.weight
         ctx.progress(1.0, "done")
         if ctx.options.until and st.name == ctx.options.until:

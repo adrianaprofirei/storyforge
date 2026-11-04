@@ -100,11 +100,13 @@ object with the SAME id that replaces the original. Keep beats that already work
 at most 4 beats and remove at most 6. Reply with JSON only, matching the review schema."""
 
 
-def llm_review(llm, sp: dict, bible: dict, part_plan: dict | None, findings: dict, is_finale: bool) -> dict:
+def llm_review(llm, sp: dict, bible: dict, part_plan: dict | None, findings: dict, is_finale: bool,
+               continuity: list[dict] | None = None) -> dict:
     user = json.dumps({
         "bible": {k: bible.get(k) for k in ("title", "world", "characters", "relationships", "running_gags",
                                              "locations", "format")},
-        "recent_continuity": bible.get("continuity_log", [])[-5:],
+        "recent_continuity": [{k: e.get(k) for k in ("episode_id", "summary", "open_threads")}
+                              for e in (continuity if continuity is not None else bible.get("continuity_log", []))[-5:]],
         "part_plan": part_plan,
         "is_finale": is_finale,
         "automatic_findings": findings["notes"],

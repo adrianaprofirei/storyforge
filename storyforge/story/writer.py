@@ -40,7 +40,8 @@ Hard rules:
 Reply with the JSON document only."""
 
 
-def screenplay_prompt(bible: dict, arc: dict, part_plan: dict, previous_summary: str | None) -> tuple[str, str]:
+def screenplay_prompt(bible: dict, arc: dict, part_plan: dict, previous_summary: str | None,
+                      continuity: list[dict] | None = None) -> tuple[str, str]:
     fmt = bible.get("format", {})
     total = len(arc.get("parts", []))
     final = part_plan["part"] >= total
@@ -51,7 +52,9 @@ def screenplay_prompt(bible: dict, arc: dict, part_plan: dict, previous_summary:
     user = json.dumps({
         "series_bible": {k: bible.get(k) for k in ("title", "logline", "world", "characters", "relationships",
                                                    "running_gags", "locations")},
-        "continuity_log": bible.get("continuity_log", [])[-8:],
+        "continuity_log": [{k: e.get(k) for k in ("episode_id", "title", "summary", "changes", "open_threads",
+                                                  "object_states", "character_states")}
+                           for e in (continuity if continuity is not None else bible.get("continuity_log", []))[-8:]],
         "arc": {k: arc.get(k) for k in ("title", "premise", "theme", "final_payoff")},
         "all_parts": arc.get("parts"),
         "write_part": part_plan,
@@ -62,8 +65,9 @@ def screenplay_prompt(bible: dict, arc: dict, part_plan: dict, previous_summary:
 
 
 def write_screenplay(llm, bible: dict, arc: dict, part_plan: dict, cast_ids: set[str],
-                     previous_summary: str | None = None) -> dict:
-    system, user = screenplay_prompt(bible, arc, part_plan, previous_summary)
+                     previous_summary: str | None = None, continuity: list[dict] | None = None,
+                     variation: int = 0) -> dict:
+    system, user = screenplay_prompt(bible, arc, part_plan, previous_summary, continuity)
     loc_ids = {loc["id"] for loc in bible.get("locations", [])}
     fmt = bible.get("format", {})
     rng = (float(fmt.get("part_min_seconds", 45)), float(fmt.get("part_max_seconds", 90)))
@@ -72,7 +76,7 @@ def write_screenplay(llm, bible: dict, arc: dict, part_plan: dict, cast_ids: set
         return semantic_errors(doc, bible, cast_ids, loc_ids, rng)
 
     doc = llm.generate_json("screenplay", system, user, "screenplay", semantic_check=check, max_tokens=32000,
-                            context={"arc": arc, "part_plan": part_plan, "bible": bible})
+                            variation=variation, context={"arc": arc, "part_plan": part_plan, "bible": bible})
     doc["schema_version"] = 1
     doc["part"] = part_plan["part"]
     return doc

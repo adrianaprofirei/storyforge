@@ -79,6 +79,7 @@ class Project:
         arc = read_json(SAMPLES_DIR / "arc.json")
         if proj.arc(arc["arc_id"]) is None:
             proj.save_arc(arc)
+            proj.create_arc_episodes(arc, source="sample")
             for part in arc["parts"]:
                 ep_id = proj.episode_id_for(arc["arc_id"], part["part"])
                 sp_src = SAMPLES_DIR / "screenplays" / f"part{part['part']}.json"
@@ -87,10 +88,7 @@ class Project:
                     sp = read_json(sp_src)
                     sp["episode_id"] = ep_id
                     write_json(ep_dir / "screenplay.json", sp)
-                proj.save_episode_meta(ep_id, {"arc_id": arc["arc_id"], "part": part["part"],
-                                               "title": part["title"], "status": "written",
-                                               "source": "sample"})
-            proj.register_arc_in_bible(arc)
+                    proj.save_episode_meta(ep_id, {"status": "written"})
         return proj
 
     # ------------------------------------------------------------------ bible
@@ -131,6 +129,11 @@ class Project:
         write_yaml(self.root / "bible" / "versions" / f"v{version:04d}.yaml", doc)
         write_yaml(self.bible_path, doc)
         return version
+
+    def restore_bible_version(self, version: int) -> int:
+        """Make an old version current again (saved as a new version, history is never rewritten)."""
+        doc = self.bible_version(version)
+        return self.save_bible(doc, message=f"restored v{version}")
 
     def update_bible(self, fn, message: str) -> int:
         bible = self.bible()
@@ -188,9 +191,43 @@ class Project:
         write_json(self.root / "arcs" / f"{arc['arc_id']}.json", arc)
         return arc
 
+    def delete_arc(self, arc_id: str, delete_episodes: bool = True) -> None:
+        """Remove an arc, its episodes (folders, bible entries) and their continuity entries."""
+        arc = self.arc(arc_id)
+        if arc is None:
+            raise KeyError(arc_id)
+        ids = {self.episode_id_for(arc_id, p["part"]) for p in arc.get("parts", [])}
+
+        def fn(b):
+            b["arcs"] = [a for a in b.get("arcs", []) if a.get("id") != arc_id]
+            b["episodes"] = [e for e in b.get("episodes", []) if e.get("id") not in ids]
+            b["continuity_log"] = [e for e in b.get("continuity_log", []) if e.get("episode_id") not in ids]
+        self.update_bible(fn, message=f"arc {arc_id} deleted")
+        (self.root / "arcs" / f"{arc_id}.json").unlink(missing_ok=True)
+        if delete_episodes:
+            for eid in ids:
+                d = self.root / "episodes" / eid
+                if d.is_dir():
+                    shutil.rmtree(d, ignore_errors=True)
+
     @staticmethod
     def episode_id_for(arc_id: str, part: int) -> str:
         return f"{arc_id}_p{part}"
+
+    def create_arc_episodes(self, arc: dict, source: str = "planner") -> list[str]:
+        """One episode folder per part (status `planned`) + arc/episode tracking in the bible."""
+        ids = []
+        for part in arc["parts"]:
+            ep_id = self.episode_id_for(arc["arc_id"], part["part"])
+            meta = self.episode_meta(ep_id)
+            updates = {"arc_id": arc["arc_id"], "part": part["part"], "title": part["title"],
+                       "parts_total": len(arc["parts"]), "source": meta.get("source", source)}
+            if "status" not in meta:
+                updates["status"] = "planned"
+            self.save_episode_meta(ep_id, updates)
+            ids.append(ep_id)
+        self.register_arc_in_bible(arc)
+        return ids
 
     def register_arc_in_bible(self, arc: dict) -> None:
         def fn(b):
@@ -214,6 +251,43 @@ class Project:
                     e["status"] = status
                     e.update(extra)
         self.update_bible(fn, message=f"{episode_id}: {status}")
+
+    def upsert_continuity_entry(self, entry: dict) -> int | None:
+        """Replace this episode's continuity entry (kept in episode order); returns the new bible
+        version, or None when nothing changed."""
+        bible = self.bible()
+        log = bible.get("continuity_log", []) or []
+        old = next((e for e in log if e.get("episode_id") == entry["episode_id"]), None)
+        ignore = {"logged_at"}
+        if old and {k: v for k, v in old.items() if k not in ignore} == {k: v for k, v in entry.items()
+                                                                          if k not in ignore}:
+            return None
+        order = [e["id"] for e in bible.get("episodes", []) if e.get("id")]
+        log = [e for e in log if e.get("episode_id") != entry["episode_id"]] + [entry]
+        log.sort(key=lambda e: order.index(e["episode_id"]) if e.get("episode_id") in order else len(order))
+        bible["continuity_log"] = log
+        for e in bible.get("episodes", []):
+            if e.get("id") == entry["episode_id"] and e.get("status") in (None, "planned", "written"):
+                e["status"] = "scripted"
+        return self.save_bible(bible, message=f"continuity: {entry['episode_id']} logged")
+
+    def mark_episode_rendered(self, episode_id: str, preset: str, video: str | None = None) -> int | None:
+        """Track a finished render in the bible (episode list + continuity entry). One version per change."""
+        bible = self.bible()
+        changed = False
+        for e in bible.get("episodes", []):
+            if e.get("id") == episode_id:
+                presets = sorted(set(e.get("rendered_presets", [])) | {preset})
+                if e.get("status") != "rendered" or e.get("rendered_presets") != presets:
+                    e.update({"status": "rendered", "rendered_presets": presets, "rendered_at": now_iso()})
+                    changed = True
+        for e in bible.get("continuity_log", []) or []:
+            if e.get("episode_id") == episode_id and e.get("status") != "rendered":
+                e["status"] = "rendered"
+                changed = True
+        if not changed:
+            return None
+        return self.save_bible(bible, message=f"{episode_id}: rendered ({preset})")
 
     # ------------------------------------------------------------------ episodes
     def episode_dir(self, episode_id: str) -> Path:
@@ -255,3 +329,25 @@ class Project:
 
 def load_document(path: Path) -> dict:
     return read_data(path)
+
+
+def bible_diff(a, b, path: str = "") -> list[dict]:
+    """Field-level differences between two bible versions (for the version history view)."""
+    out: list[dict] = []
+    if isinstance(a, dict) and isinstance(b, dict):
+        for k in sorted(set(a) | set(b)):
+            if k in ("_meta", "version"):
+                continue
+            out += bible_diff(a.get(k), b.get(k), f"{path}.{k}" if path else str(k))
+        return out
+    if isinstance(a, list) and isinstance(b, list):
+        key = next((k for k in ("id", "episode_id") if all(isinstance(x, dict) and k in x for x in a + b)), None)
+        if key:
+            da, db = {x[key]: x for x in a}, {x[key]: x for x in b}
+            for k in list(da) + [k for k in db if k not in da]:
+                out += bible_diff(da.get(k), db.get(k), f"{path}[{k}]")
+            return out
+    if a != b:
+        out.append({"path": path, "old": a, "new": b,
+                    "change": "added" if a is None else "removed" if b is None else "changed"})
+    return out

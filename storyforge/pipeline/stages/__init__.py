@@ -3,13 +3,14 @@
 from storyforge.pipeline.stages.audio_stage import AudioMixStage
 from storyforge.pipeline.stages.blender_stages import BuildStage, RenderStage, SceneSpecStage
 from storyforge.pipeline.stages.deliver import CaptionsStage, DeliverablesStage, MuxStage, QualityStage
-from storyforge.pipeline.stages.story_stages import ReviewStage, ScreenplayStage
+from storyforge.pipeline.stages.story_stages import ContinuityLogStage, ReviewStage, ScreenplayStage
 from storyforge.pipeline.stages.timeline_stage import PerformanceStage, ShotsStage, TimelineStage
 from storyforge.pipeline.stages.voice_stages import LipSyncStage, VoicesStage
 
 ALL_STAGES = [
     ScreenplayStage,
     ReviewStage,
+    ContinuityLogStage,
     VoicesStage,
     LipSyncStage,
     TimelineStage,

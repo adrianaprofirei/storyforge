@@ -34,28 +34,55 @@ def sample_arc() -> dict:
     return read_json(SAMPLES / "arc.json")
 
 
+TITLE_STOP = {"a", "an", "the", "of", "to", "and", "that", "only", "tiny", "with", "for", "in", "on", "at", "who",
+              "which", "can", "starts", "start", "is", "are", "was", "gets"}
+PART_BEATS = [
+    # (hook, escalation, mini_payoff, cliffhanger) templates by position in the arc
+    ("Something impossible happens: {idea}", "The friends try to explain it and only make it stranger.",
+     "Their first theory actually works... for a moment.", "A second sign appears, bigger than the first."),
+    ("It's happening again, right in front of everyone.", "The clues point somewhere nobody expected.",
+     "One clue finally makes sense.", "The real cause is closer than they think."),
+    ("They set a trap for the mystery.", "The trap works too well and everything goes wrong.",
+     "Teamwork saves the day in a funny way.", "Someone else knows the secret."),
+    ("A new ally shows up with a missing piece.", "Time runs out and the stakes get personal.",
+     "Their friendship turns out to be the key.", "One last surprise is waiting."),
+    ("Everything comes together tonight.", "The final test: they must trust each other.",
+     "The mystery is solved, with a gentle twist.", None),
+]
+
+
+def _arc_title(idea: str) -> str:
+    words = [w.strip(".,!?;:") for w in split_words(idea)][:6]
+    while len(words) > 2 and words[-1].lower() in TITLE_STOP:
+        words.pop()
+    title = " ".join(words).strip() or "A New Mystery"
+    return title[0].upper() + title[1:]
+
+
 def template_arc(idea: str, bible: dict, parts: int = 2) -> dict:
     chars = [c["id"] for c in bible.get("characters", [])][:3]
     locs = [loc["id"] for loc in bible.get("locations", [])] or ["library"]
-    title = _short(idea, 6).rstrip(".!?") or "A New Mystery"
+    title = _arc_title(idea)
     plan = []
     for i in range(1, parts + 1):
         final = i == parts
+        # the finale always uses the last template; earlier parts walk through the rest
+        hook, esc, pay, cliff = PART_BEATS[-1] if final else PART_BEATS[min(i - 1, len(PART_BEATS) - 2)]
         plan.append({
             "part": i,
-            "title": f"{title} - Part {i}",
+            "title": f"{title} - Part {i}"[:80],
             "logline": _short(idea, 40),
-            "hook": f"Something impossible happens: {_short(idea, 10)}",
-            "escalation": "The friends dig deeper and the mystery gets bigger.",
-            "mini_payoff": "One clue finally makes sense.",
-            "cliffhanger": None if final else "A brand new clue changes everything.",
-            "recap": None if i == 1 else "Previously: the mystery began.",
+            "hook": hook.format(idea=_short(idea, 12)),
+            "escalation": esc,
+            "mini_payoff": pay,
+            "cliffhanger": None if final else cliff,
+            "recap": None if i == 1 else _short(f"Previously: {_short(idea, 12)}", 18)[:120],
             "location": locs[(i - 1) % len(locs)],
             "time_of_day": "day" if i % 2 else "evening",
             "cast": chars,
             "music_mood": "mysterious" if not final else "triumphant",
         })
-    return {"arc_id": slugify(title, 32), "title": title, "idea": idea[:1000],
+    return {"arc_id": slugify(title, 32), "title": title[:80], "idea": idea[:1000],
             "premise": _short(idea, 60), "theme": "Friendship and curiosity",
             "final_payoff": "The friends solve the mystery together.", "parts": plan}
 
@@ -93,8 +120,13 @@ def template_screenplay(arc: dict, part_plan: dict, bible: dict) -> dict:
     hook = _short(part_plan.get("hook", "Wait. Did you see that?"), 12)
     add(a, hook if hook.endswith(("!", "?")) else hook.rstrip(".") + "!", "shocked", 0.9,
         "Everyone freezes as something strange happens.", "urgent", "hook", "point", "snap_zoom", b)
-    add(b, "Okay. Nobody panic. Tell me exactly what you saw.", "neutral", 0.45, "Steps closer, calm.",
-        "steady", "setup", None, "medium", a)
+    prev = next((x for x in arc.get("parts", []) if x.get("part") == part_plan.get("part", 1) - 1), None)
+    if prev and prev.get("cliffhanger"):  # parts 2+ pick up the previous cliffhanger right away
+        add(b, _short(f"Okay. Last time: {prev['cliffhanger'].rstrip('.')}. Now this?", 16), "neutral", 0.5,
+            "Steps closer, calm but worried.", "steady", "setup", None, "medium", a)
+    else:
+        add(b, "Okay. Nobody panic. Tell me exactly what you saw.", "neutral", 0.45, "Steps closer, calm.",
+            "steady", "setup", None, "medium", a)
     add(c, "I'm not panicking. You're panicking.", "scared", 0.55, "Hides behind the others.", "nervous joke",
         "joke", "shiver", "close_up", b)
     for s in _sentences(part_plan.get("logline", ""))[:2]:
@@ -133,9 +165,23 @@ def template_continuity(sp: dict) -> dict:
     facts = [_short(b["action"], 30) for b in key[:5] if b.get("action")]
     objects = sorted({f"{p['character']} {p['action'].replace('_', ' ')}s the {p['prop']}"
                       for b in sp.get("beats", []) for p in b.get("props", [])})[:6]
+    # where each prop ended up: the last prop event of the episode decides
+    last: dict[str, dict] = {}
+    for b in sp.get("beats", []):
+        for p in b.get("props", []):
+            last[p["prop"]] = p
+    states = []
+    for prop, ev in sorted(last.items()):
+        if ev["action"] == "give":
+            states.append({"object": prop, "holder": ev.get("to"), "status": "has"})
+        elif ev["action"] in ("put_down", "drop"):
+            states.append({"object": prop, "holder": None, "status": "stored"})
+        else:
+            states.append({"object": prop, "holder": ev["character"], "status": "has"})
     return {"summary": (summary + ".")[:700],
             "changes": {"relationships": [], "objects": objects, "secrets": [], "facts": facts},
             "open_threads": [sp["cliffhanger"]] if sp.get("cliffhanger") else [],
+            "object_states": states[:12], "character_states": [],
             "_lines": len(spoken)}
 
 
@@ -176,7 +222,8 @@ def demo_generate(task: str, context: dict) -> dict:
         doc.pop("_lines", None)
         return doc
     if task == "continuity_check":
-        return {"issues": context.get("rule_issues", [])}
+        keys = ("beat_id", "kind", "severity", "message", "suggestion")
+        return {"issues": [{k: i.get(k) for k in keys} for i in context.get("rule_issues", [])]}
     if task == "metadata":
         return template_metadata(context["screenplay"], context["bible"])
     raise KeyError(task)
