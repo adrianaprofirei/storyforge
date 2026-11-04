@@ -145,27 +145,52 @@ class RenderStage(Stage):
                 eta = el / done_frames * (total_frames - done_frames) if done_frames else 0
                 ctx.progress(done_frames / max(1, total_frames), f"{done_frames}/{total_frames} frames, ETA {eta:.0f}s")
 
-        def render_one(s):
-            d = root / s["id"]
-            d.mkdir(parents=True, exist_ok=True)
-            args = ["--blend", str(blend), "--shot", s["id"], "--start", str(s["frame_start"]), "--end", str(s["frame_end"]),
-                    "--out", str(d), "--preset", preset, "--device", ctx.settings.render_device,
-                    "--style", spec["style"]["preset"]]
+        def render_batch(batch: list[dict], idx: int):
+            jobs = []
+            for s in batch:
+                d = root / s["id"]
+                d.mkdir(parents=True, exist_ok=True)
+                jobs.append({"id": s["id"], "start": s["frame_start"], "end": s["frame_end"], "out": str(d)})
+            batch_file = root / f".batch_{idx}.json"
+            write_json(batch_file, jobs)
+            done_ids = set()
+
+            def on_log(line: str):
+                ctx.log(line)
+
+            args = ["--blend", str(blend), "--batch", str(batch_file), "--preset", preset,
+                    "--device", ctx.settings.render_device, "--style", spec["style"]["preset"]]
             if ctx.options.max_frames:
                 args += ["--max-frames", str(ctx.options.max_frames)]
-            run_blender(ctx.settings, "render", args, on_log=ctx.log, on_frame=on_frame, cancel_event=ctx.cancel_event,
-                        log_file=d / "render.log")
-            (d / ".key").write_text(keys[s["id"]])
-            return s["id"]
+            out = run_blender(ctx.settings, "render", args, on_log=on_log, on_frame=on_frame,
+                              cancel_event=ctx.cancel_event, log_file=root / f".batch_{idx}.log")
+            for line in out.splitlines():
+                if line.startswith("SF_SHOT_DONE "):
+                    done_ids.add(line.split()[1])
+            for s in batch:  # a shot's key is written only once it has fully rendered
+                if s["id"] in done_ids:
+                    (root / s["id"] / ".key").write_text(keys[s["id"]])
+            batch_file.unlink(missing_ok=True)
+            return len(done_ids)
 
-        workers = max(1, ctx.settings.render_workers)
-        if workers == 1:
-            for s in todo:
+        workers = max(1, min(ctx.settings.render_workers, len(todo))) if todo else 1
+        # balance shots across workers by frame count (largest first)
+        batches: list[list[dict]] = [[] for _ in range(workers)]
+        loads = [0] * workers
+        for s in sorted(todo, key=lambda s: -(s["frame_end"] - s["frame_start"])):
+            i = loads.index(min(loads))
+            batches[i].append(s)
+            loads[i] += s["frame_end"] - s["frame_start"] + 1
+        for b in batches:
+            b.sort(key=lambda s: s["frame_start"])
+        batches = [b for b in batches if b]
+        if len(batches) <= 1:
+            for i, b in enumerate(batches):
                 ctx.check_cancel()
-                render_one(s)
+                render_batch(b, i)
         else:
-            with ThreadPoolExecutor(max_workers=workers) as ex:
-                futs = [ex.submit(render_one, s) for s in todo]
+            with ThreadPoolExecutor(max_workers=len(batches)) as ex:
+                futs = [ex.submit(render_batch, b, i) for i, b in enumerate(batches)]
                 for fut in as_completed(futs):
                     fut.result()
         manifest = {"preset": preset, "fps": spec["fps"], "frame_start": spec["frame_start"],

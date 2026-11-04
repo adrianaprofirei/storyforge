@@ -14,7 +14,7 @@ from mathutils import Quaternion, Vector
 
 from storyforge_blender import compat
 
-TRACK_ORDER = ["base", "locomotion", "hold", "gesture", "correction", "secondary"]
+TRACK_ORDER = ["base", "locomotion", "hold", "gesture", "look", "correction", "secondary"]
 
 
 def _q(v) -> Quaternion:
@@ -393,3 +393,44 @@ def apply_squash(rig, keys: list):
     compat.set_keys(rig, "scale", 2, sz, "BEZIER")
     compat.set_keys(rig, "scale", 0, sxy, "BEZIER")
     compat.set_keys(rig, "scale", 1, sxy, "BEZIER")
+
+
+def look_layer(rig, look: dict, neck_share: float = 0.3):
+    """Head/neck look-at offsets (eyes lead, head follows) as an additive COMBINE strip."""
+    yaw_k, pitch_k = look.get("yaw") or [], look.get("pitch") or []
+    if not yaw_k and not pitch_k:
+        return None
+    frames = sorted({k[0] for k in yaw_k} | {k[0] for k in pitch_k})
+
+    def interp(keys, f):
+        if not keys:
+            return 0.0
+        if f <= keys[0][0]:
+            return keys[0][1]
+        for a, b in zip(keys, keys[1:], strict=False):
+            if a[0] <= f <= b[0]:
+                u = (f - a[0]) / max(1e-6, b[0] - a[0])
+                return a[1] + (b[1] - a[1]) * u
+        return keys[-1][1]
+
+    act = bpy.data.actions.new(f"{rig.name}_look")
+    adt = rig.animation_data or rig.animation_data_create()
+    prev = adt.action
+    adt.action = act
+    for bone, share in (("neck", neck_share), ("head", 1.0 - neck_share)):
+        pb = rig.pose.bones.get(bone)
+        if pb is None:
+            continue
+        rest = pb.bone.matrix_local.to_quaternion()
+        keys = [[], [], [], []]
+        for f in frames:
+            yaw = math.radians(interp(yaw_k, f) * share)
+            pitch = math.radians(-interp(pitch_k, f) * share)  # looking up = negative nod
+            L = Quaternion((0, 0, 1), yaw) @ Quaternion((1, 0, 0), pitch)
+            q = rest.inverted() @ L @ rest
+            for c in range(4):
+                keys[c].append((float(f), q[c]))
+        for c in range(4):
+            compat.set_keys(rig, f'pose.bones["{bone}"].rotation_quaternion', c, keys[c], "BEZIER", group=bone)
+    adt.action = prev
+    return add_strip(rig, "look", act, act.frame_range[0], blend_type="COMBINE", extrapolation="HOLD")

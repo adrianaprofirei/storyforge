@@ -86,6 +86,7 @@ class PerformanceStage(Stage):
 
         return {"timeline": maybe_file_hash(ctx.path("timeline.json")),
                 "blocking": maybe_file_hash(ctx.path("blocking.json")),
+                "shots": maybe_file_hash(ctx.path("shotlist.json")),
                 "cast": stable_hash({k: {kk: v.get(kk) for kk in ("look", "settings", "rig")} for k, v in ctx.cast().items()}),
                 "mocap": [p.name + ":" + str(p.stat().st_size) for p in mocap_files()], "manifest": manifest(),
                 "retarget": retarget_code_hash(),
@@ -117,15 +118,12 @@ class PerformanceStage(Stage):
                         perf["clips"][st["clip"]] = {k: c[k] for k in ("name", "fps", "frames", "loop", "bones", "root",
                                                                        "root_normalized", "contacts", "category",
                                                                        "source")}
-        try:
-            from storyforge.performance.face import plan_faces
+        from storyforge.performance.face import plan_faces
 
-            faces, fx = plan_faces(tl, blocking, ctx.cast(), tl["fps"])
-            for cid, f in faces.items():
-                perf["characters"].setdefault(cid, {})["face"] = f
-            perf["fx"] = fx
-        except ImportError:
-            perf["fx"] = []
+        faces, fx = plan_faces(tl, blocking, ctx.cast(), tl["fps"], read_json(ctx.path("shotlist.json"), None))
+        for cid, f in faces.items():
+            perf["characters"].setdefault(cid, {})["face"] = f
+        perf["fx"] = fx
         write_json(ctx.path("performance.json"), perf, indent=None)
         return {"clips": len(perf["clips"]), "props": len(perf["props"]), "extras": len(perf["extras"]),
                 "mocap": perf.get("mocap_used", [])}

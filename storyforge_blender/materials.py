@@ -63,14 +63,16 @@ class MaterialFactory:
     def _pattern(self, n: Nodes, color, pattern: str, pcolor):
         if pattern in (None, "solid", "emblem") or pcolor is None:
             return color
-        co = n.texcoord("Object")
+        # Generated coordinates are computed on the undeformed mesh, so patterns stay glued to
+        # skinned clothing instead of swimming when the body bends (0..1 over the bounding box)
+        co = n.texcoord("Generated")
         x, y, z = n.separate(co)
         if pattern == "stripes":
-            s = n.math("SINE", n.math("MULTIPLY", z, 62.0))
+            s = n.math("SINE", n.math("MULTIPLY", z, 72.0))
             m = n.smooth_step(-0.08, 0.08, s)
         elif pattern == "plaid":
-            a = n.smooth_step(-0.1, 0.1, n.math("SINE", n.math("MULTIPLY", z, 48.0)))
-            b = n.smooth_step(-0.1, 0.1, n.math("SINE", n.math("MULTIPLY", x, 48.0)))
+            a = n.smooth_step(-0.1, 0.1, n.math("SINE", n.math("MULTIPLY", z, 56.0)))
+            b = n.smooth_step(-0.1, 0.1, n.math("SINE", n.math("MULTIPLY", x, 20.0)))
             m = n.math("MULTIPLY", n.math("ADD", a, b), 0.5)
         elif pattern == "dots":
             vor = n.node("ShaderNodeTexVoronoi")

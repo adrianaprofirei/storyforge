@@ -217,6 +217,19 @@ def _add_armature_mod(obj, rig, group: str | None = None):
     return mod
 
 
+def _parent_to_bone(obj, rig, bone_name: str):
+    """Rigid attachment to a bone keeping the current (rest) placement. Face parts use this so their
+    object space moves with the head (the eye shader works in object space)."""
+    from mathutils import Matrix
+
+    bone = rig.data.bones[bone_name]
+    obj.parent = rig
+    obj.parent_type = "BONE"
+    obj.parent_bone = bone_name
+    pm = rig.matrix_world @ bone.matrix_local @ Matrix.Translation((0, bone.length, 0))
+    obj.matrix_parent_inverse = pm.inverted()
+
+
 def build_armature(name: str, m: dict, collection):
     arm = bpy.data.armatures.new(f"{name}_armature")
     rig = bpy.data.objects.new(f"{name}_rig", arm)
@@ -588,18 +601,18 @@ def build_character(spec: dict, mats: MaterialFactory, scene) -> dict:
     for k, v in {"gaze_x": 0.0, "gaze_y": 0.0, "lid_top": 0.0, "lid_bottom": 0.0, "lid_tilt": 0.0,
                  "pupil_scale": 1.0}.items():
         eyes[k] = v
-    _add_armature_mod(eyes, rig, "head")
+    _parent_to_bone(eyes, rig, "head")
 
     mouth = build_mouth_mesh(f"{cid}_mouth", head, float(face_cfg.get("mouth_width", 1.0)), front - head * 0.004,
                              -head * 0.25, [mats.mouth(f"{cid}_mouth_mat", colors.get("lips", "#B5654A"), colors["skin"]),
                                             lips_mat], coll)
     mouth.location = (0, 0, hc)
-    _add_armature_mod(mouth, rig, "head")
+    _parent_to_bone(mouth, rig, "head")
 
     brows = build_brows(f"{cid}_brows", m, ex, eye_cz + rz + head * 0.075, front, float(face_cfg.get("brow_thickness", 1.0)),
                         brow_mat, coll)
     brows.location = (0, 0, hc)
-    _add_armature_mod(brows, rig, "head")
+    _parent_to_bone(brows, rig, "head")
 
     bbm = bmesh.new()
     for sg in (1, -1):
@@ -613,7 +626,7 @@ def build_character(spec: dict, mats: MaterialFactory, scene) -> dict:
     blush = geo.mesh_object(f"{cid}_blush", bbm, coll, [mats.decal(f"{cid}_blush_mat", "#FF6F91")])
     blush.location = (0, 0, hc)
     blush.color = (1, 1, 1, 0.0)
-    _add_armature_mod(blush, rig, "head")
+    _parent_to_bone(blush, rig, "head")
     freckles = None
     if face_cfg.get("freckles"):
         fbm = bmesh.new()
@@ -629,7 +642,7 @@ def build_character(spec: dict, mats: MaterialFactory, scene) -> dict:
         freckles = geo.mesh_object(f"{cid}_freckles", fbm, coll,
                                    [mats.surface(f"{cid}_freckle", geo_hex_darken(colors["skin"], 0.72), "skin")])
         freckles.location = (0, 0, hc)
-        _add_armature_mod(freckles, rig, "head")
+        _parent_to_bone(freckles, rig, "head")
 
     accessories = [a for a in (look.get("accessories") or []) if isinstance(a, dict)]
     has_hat = any(a["type"] in ("beanie", "cap") for a in accessories)

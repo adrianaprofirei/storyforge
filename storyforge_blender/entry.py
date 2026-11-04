@@ -43,10 +43,11 @@ def _args(argv: list[str]):
     b.add_argument("--analysis")
     r = sub.add_parser("render")
     r.add_argument("--blend", required=True)
-    r.add_argument("--shot", required=True)
-    r.add_argument("--start", type=int, required=True)
-    r.add_argument("--end", type=int, required=True)
-    r.add_argument("--out", required=True)
+    r.add_argument("--shot")
+    r.add_argument("--start", type=int)
+    r.add_argument("--end", type=int)
+    r.add_argument("--out")
+    r.add_argument("--batch", help="JSON file: [{id, start, end, out}, ...] rendered in one Blender session")
     r.add_argument("--preset", default="draft")
     r.add_argument("--device", default="AUTO")
     r.add_argument("--style", default=None)
@@ -102,6 +103,31 @@ def _frame_handler(scene, *_):
     print(f"SF_FRAME_DONE {scene.frame_current}", flush=True)
 
 
+def _render_shot(scene, shot_id: str, start: int, end: int, out_dir: str, max_frames: int = 0):
+    cam = bpy.data.objects.get(f"CAM_{shot_id}")
+    saved = {}
+    if cam is not None:
+        scene.camera = cam
+        for m in scene.timeline_markers:  # this shot's camera wins inside its range
+            if m.camera is not None and m.name != shot_id and start <= m.frame <= end:
+                saved[m.name] = m.camera
+                m.camera = cam
+    if max_frames:
+        end = min(end, start + max_frames - 1)
+    scene.frame_start, scene.frame_end = start, end
+    out = Path(out_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    scene.render.filepath = str(out / "frame_")
+    t = time.time()
+    bpy.ops.render.render(animation=True)
+    for m in scene.timeline_markers:
+        if m.name in saved:
+            m.camera = saved[m.name]
+    (out / ".done").write_text(f"{start}-{end}")
+    print(f"SF_LOG rendered {shot_id} frames {start}-{end} in {time.time() - t:.1f}s", flush=True)
+    print(f"SF_SHOT_DONE {shot_id}", flush=True)
+
+
 def cmd_render(a):
     from storyforge_blender.render_settings import configure
 
@@ -110,23 +136,13 @@ def cmd_render(a):
     info = configure(scene, a.preset, style, a.device, scene.render.fps,
                      volumetric_night=bool(scene.get("sf_night_volumetrics", False)))
     print(f"SF_LOG render device: {info}", flush=True)
-    cam = bpy.data.objects.get(f"CAM_{a.shot}")
-    if cam is not None:
-        scene.camera = cam
-        for m in scene.timeline_markers:  # only this shot's camera binding matters for the range
-            if m.camera is not None and m.name != a.shot and a.start <= m.frame <= a.end:
-                m.camera = cam
-    end = a.end
-    if a.max_frames:
-        end = min(end, a.start + a.max_frames - 1)
-    scene.frame_start, scene.frame_end = a.start, end
-    out = Path(a.out)
-    out.mkdir(parents=True, exist_ok=True)
-    scene.render.filepath = str(out / "frame_")
     bpy.app.handlers.render_post.append(_frame_handler)
-    t = time.time()
-    bpy.ops.render.render(animation=True)
-    print(f"SF_LOG rendered {a.shot} frames {a.start}-{end} in {time.time() - t:.1f}s", flush=True)
+    if a.batch:
+        # several shots in one session: the file is opened and EEVEE shaders compiled only once
+        for job in json.loads(Path(a.batch).read_text(encoding="utf-8")):
+            _render_shot(scene, job["id"], int(job["start"]), int(job["end"]), job["out"], a.max_frames)
+    else:
+        _render_shot(scene, a.shot, a.start, a.end, a.out, a.max_frames)
 
 
 def cmd_stills(a):

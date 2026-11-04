@@ -30,6 +30,9 @@ def apply_body(scene, spec: dict, characters: dict) -> dict:
         else:  # no plan (old specs): relaxed pose + breathing
             speaking = [tuple(x) for x in perf.get("speaking_frames", [])]
             animate.simple_performance(rig, fs, fe, speaking, fps)
+        look = (cs.get("face") or {}).get("look")
+        if look:
+            nla.look_layer(rig, look)
         nla.apply_squash(rig, perf.get("squash", []))
     # post passes need the evaluated animation of the whole scene
     for cs in spec["characters"]:
@@ -87,10 +90,8 @@ def apply_all(scene, spec: dict, characters: dict, mats, set_builder) -> None:
     if spec.get("extras"):
         apply_extras(scene, spec, mats)
     apply_body(scene, spec, characters)
-    try:
-        from storyforge_blender import fx
+    from storyforge_blender import fx
 
-        fx.build_fx(scene, spec, characters, mats)
-    except ImportError:
-        pass
+    n_fx = fx.build_fx(scene, spec, characters, mats)
+    log(f"{n_fx} emotion FX built")
     log(f"performance applied in {time.time() - t:.1f}s")

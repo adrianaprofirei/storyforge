@@ -79,7 +79,7 @@ def compile_spec(*, episode_id: str, timeline: dict, shotlist: dict, blocking: d
         face = {"mouth": mouth_tracks(timeline, cid, (entry.get("rig") or {}).get("face"), fps)}
         for name, keys in (face_plan.get("mouth_expr") or {}).items():
             face["mouth"][name] = keys
-        for k in ("brows", "eyes", "blush", "fx"):
+        for k in ("brows", "eyes", "blush", "look"):
             if face_plan.get(k):
                 face[k] = face_plan[k]
         cperf.pop("used_clips", None)

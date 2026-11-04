@@ -104,7 +104,7 @@ def _active_bones(clip: dict, tol_deg: float = 1.5) -> list[str]:
 
 
 def plan_character(cid: str, timeline: dict, blocking: dict, cast_entry: dict, lib: ClipLibrary,
-                   props: list[dict], seed: int) -> dict:
+                   props: list[dict], seed: int, extra_events: list[dict] | None = None) -> dict:
     fps = timeline["fps"]
     rng = random.Random(seed)
     settings = cast_entry.get("settings", {}) or {}
@@ -160,7 +160,9 @@ def plan_character(cid: str, timeline: dict, blocking: dict, cast_entry: dict, l
         return all(not (a < t1 and t0 < b) or prio > pr for a, b, pr in occupied)
 
     beats = {b["id"]: b for b in timeline["beats"]}
-    gesture_events = [e for e in timeline["events"] if e["type"] == "gesture" and e["character"] == cid]
+    gesture_events = [e for e in timeline["events"] + list(extra_events or [])
+                      if e["type"] == "gesture" and e["character"] == cid]
+    gesture_events.sort(key=lambda e: (e.get("reaction", False), e["t"]))  # scripted gestures claim time first
     for ev in gesture_events:
         clip = lib.get(ev["name"])
         if not clip:
@@ -177,7 +179,7 @@ def plan_character(cid: str, timeline: dict, blocking: dict, cast_entry: dict, l
                        and e.get("action") == "pick_up" and abs(e["t"] - ev["t"]) < 2.0), None)
             if pe:
                 t0 = pe["t"] + 0.55 - 0.75 * scale  # the grab (0.75 s into the clip) lands on the prop pick-up
-        prio = GESTURE_PRIORITY.get(ev["name"], 2)
+        prio = 1 if ev.get("reaction") else GESTURE_PRIORITY.get(ev["name"], 2)
         t1 = t0 + dur_s * scale
         if not free(t0, t1, prio):
             continue
@@ -243,11 +245,15 @@ def plan_character(cid: str, timeline: dict, blocking: dict, cast_entry: dict, l
 
 def plan_performance(timeline: dict, blocking: dict, cast: dict, fps: int, log=print, use_mocap: bool = True) -> dict:
     lib = ClipLibrary(fps, use_mocap=use_mocap, log=log)
+    from storyforge.performance.face import reaction_gestures
+
     props = plan_props(timeline, blocking)
+    reactions = reaction_gestures(timeline)
     chars = {}
     used: set[str] = set()
     for i, cid in enumerate(timeline["cast"]):
-        plan = plan_character(cid, timeline, blocking, cast.get(cid, {}), lib, props, seed=1000 + 37 * i)
+        plan = plan_character(cid, timeline, blocking, cast.get(cid, {}), lib, props, seed=1000 + 37 * i,
+                              extra_events=reactions)
         chars[cid] = plan
         used |= set(plan["used_clips"])
     clips = {}

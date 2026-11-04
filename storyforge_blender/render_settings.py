@@ -55,6 +55,13 @@ def configure(scene, preset: str, style: str, device: str = "AUTO", fps: int | N
               volumetric_night: bool = False) -> dict:
     p = PRESETS.get(preset, PRESETS["draft"])
     engine_kind = p["engine"].get(style, "EEVEE")
+    cpu_fallback = False
+    if engine_kind == "EEVEE" and style != "cartoon":
+        # Without a GPU, EEVEE runs on a software OpenGL rasterizer and is ~3x slower than Cycles on
+        # the CPU at preview quality, so previews switch to Cycles (cartoon needs EEVEE's Shader to RGB).
+        if detect_gpu(device)["type"] == "CPU":
+            engine_kind = "CYCLES"
+            cpu_fallback = True
     eid = compat.set_engine(scene, engine_kind)
     r = scene.render
     r.resolution_x, r.resolution_y = p["resolution"]
@@ -73,7 +80,8 @@ def configure(scene, preset: str, style: str, device: str = "AUTO", fps: int | N
     compat.set_props(r.image_settings, compression=15)
     r.use_overwrite = False      # resumable: existing frames are skipped
     r.use_placeholder = True     # parallel workers never render the same frame twice
-    info = {"engine": eid, "resolution": list(p["resolution"]), "device": "GPU(OpenGL/Vulkan)"}
+    info = {"engine": eid, "resolution": list(p["resolution"]), "device": "GPU(OpenGL/Vulkan)",
+            "cpu_fallback": cpu_fallback}
     if compat.is_eevee(scene):
         ee = scene.eevee
         compat.set_props(ee, taa_render_samples=p["eevee_samples"], use_shadows=True,
@@ -89,7 +97,7 @@ def configure(scene, preset: str, style: str, device: str = "AUTO", fps: int | N
         cy = scene.cycles
         gpu = detect_gpu(device)
         cy.device = "GPU" if gpu["type"] != "CPU" else "CPU"
-        cy.samples = p["cycles_samples"]
+        cy.samples = p["cycles_samples"] if not cpu_fallback else max(8, p["eevee_samples"])
         compat.set_props(cy, use_adaptive_sampling=True, adaptive_threshold=0.02, use_denoising=True,
                          denoiser="OPTIX" if gpu["type"] == "OPTIX" else "OPENIMAGEDENOISE",
                          denoising_input_passes="RGB_ALBEDO_NORMAL", max_bounces=6, diffuse_bounces=3,
