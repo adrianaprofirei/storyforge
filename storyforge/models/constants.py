@@ -55,3 +55,7 @@ STYLE_PRESETS = ["stylized_3d", "cartoon"]
 
 SURFACES = ["wood", "tile", "carpet", "grass", "concrete", "gravel", "metal"]
 ROOM_TYPES = ["small_room", "medium_room", "hallway", "large_hall", "outdoors"]
+
+# recap montage for parts 2+: share of the recap per moment (two key moments, then the cliffhanger);
+# picture cuts (render/finishing.py) and the recap whooshes (audio_mix) both use it
+RECAP_SPLITS = (0.3, 0.3, 0.4)

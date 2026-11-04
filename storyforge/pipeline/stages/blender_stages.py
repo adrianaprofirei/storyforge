@@ -41,6 +41,8 @@ class SceneSpecStage(Stage):
                 "blocking": maybe_file_hash(ctx.path("blocking.json")),
                 "performance": maybe_file_hash(ctx.path("performance.json")),
                 "cast": stable_hash(ctx.cast()), "style": ctx.style(), "grade": grade_for(ctx),
+                "cast_files": {cid: maybe_file_hash((c.get("import") or {}).get("file"))
+                               for cid, c in ctx.cast().items() if (c.get("import") or {}).get("file")},
                 "preset": ctx.options.preset, "device": ctx.settings.render_device,
                 "code": tree_hash(Path(__file__).resolve().parents[2], ["scene_spec.py", "cinematography/*.py",
                                                                          "lighting/*.py", "performance/*.py"])}

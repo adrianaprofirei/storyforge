@@ -142,8 +142,21 @@ class Project:
         out = {}
         for p in sorted((self.root / "cast").glob("*.yaml")):
             entry = read_yaml(p)
+            imp = entry.get("import") or {}
+            if imp.get("file"):
+                entry["import"] = {**imp, "file": str(self.character_file(imp["file"]))}
             out[entry["id"]] = entry
         return out
+
+    def character_file(self, name: str) -> Path:
+        """Imported character files: absolute, or relative to <project>/characters or assets/characters."""
+        p = Path(name)
+        if p.is_absolute():
+            return p
+        for base in (self.root / "characters", ASSETS_DIR / "characters"):
+            if (base / p).exists():
+                return (base / p).resolve()
+        return (ASSETS_DIR / "characters" / p).resolve()
 
     def cast_member(self, cid: str) -> dict:
         return read_yaml(self.root / "cast" / f"{cid}.yaml")

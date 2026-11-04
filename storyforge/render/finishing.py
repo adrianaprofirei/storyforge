@@ -12,6 +12,7 @@ import shutil
 from pathlib import Path
 
 from storyforge.config import ASSETS_DIR
+from storyforge.models.constants import RECAP_SPLITS
 from storyforge.util.ffmpeg import capabilities, ffmpeg
 from storyforge.util.ffmpeg import duration as media_duration
 
@@ -34,26 +35,90 @@ def _sub_filter(name: str) -> str:
     return f
 
 
+RECAP_TYPES = {"reveal": 5, "payoff": 4, "escalation": 3, "hook": 2, "turn": 2, "joke": 1}
+
+
+def _settled_moment(shots: list[dict], start: float, end: float) -> float | None:
+    """A readable instant inside [start, end]: prefer a character shot over an insert, the one
+    covering most of the span, at 65 % of the overlap (camera moves such as whip pans have
+    landed by then)."""
+    best = None
+    for s in shots:
+        lo, hi = max(start, s["start"]), min(end, s["end"])
+        if hi - lo < 0.25:
+            continue
+        score = (hi - lo) * (0.35 if s.get("type") == "insert" else 1.0)
+        if best is None or score > best[0]:
+            best = (score, lo + 0.65 * (hi - lo))
+    return best[1] if best else None
+
+
+def recap_moments(prev_timeline: dict | None, video_duration: float, prev_shots: dict | None = None) -> list[float]:
+    """Pick the recap moments (seconds in the previous part's video), chronologically: two key
+    beats (reveals/payoffs/escalations ranked by type and intensity, spread apart) and the
+    cliffhanger last, so the montage leads straight into the new part's opening."""
+    if not prev_timeline or not prev_timeline.get("beats"):
+        return [video_duration * 0.35, video_duration * 0.7, max(0.0, video_duration - 2.4)]
+    dur = float(prev_timeline.get("duration", video_duration))
+    # the previous part may itself open with a recap lead-in: story time + offset = video time
+    offset = max(0.0, video_duration - dur)
+    beats = prev_timeline["beats"]
+    shots = (prev_shots or {}).get("shots", [])
+
+    def moment(b, default_offset):
+        t = _settled_moment(shots, b["start"], b.get("end", b["start"] + 1.0)) if shots else None
+        return t if t is not None else b["start"] + default_offset
+
+    cliffs = [b for b in beats if b.get("beat_type") == "cliffhanger"]
+    if cliffs:
+        cliff = max(cliffs, key=lambda b: (float(b.get("intensity", 0)), -b["start"]))
+        cliff_t = moment(cliff, 0.25)
+    else:
+        cliff_t = max(0.0, dur - 2.4)
+    gap = dur * 0.15
+    ranked = sorted((b for b in beats if b["start"] < cliff_t - gap and b.get("beat_type") in RECAP_TYPES),
+                    key=lambda b: (RECAP_TYPES[b["beat_type"]] + float(b.get("intensity", 0)), -b["start"]),
+                    reverse=True)
+    picks: list[float] = []
+    for b in ranked:
+        t = moment(b, 0.3)
+        if all(abs(t - q) >= gap for q in picks) and t < cliff_t - gap:
+            picks.append(t)
+        if len(picks) == 2:
+            break
+    fill = [dur * 0.35, dur * 0.7]
+    while len(picks) < 2:
+        picks.append(fill[len(picks)])
+    out = sorted(picks) + [cliff_t]
+    return [min(max(0.0, t + offset), max(0.0, video_duration - 0.5)) for t in out]
+
+
 def make_recap_clip(recap: dict, out: Path, fps: int, size: tuple[int, int]) -> Path | None:
-    """2-3 s 'previously' montage: the previous part's cliffhanger first (it doubles as the hook),
-    then two earlier key moments, with a slight push and a desaturated, vignetted look."""
+    """2-3 s 'previously' montage from the previous part's clean video: two key moments and the
+    cliffhanger, each with a slow push-in and a desaturated, vignetted look."""
+    from storyforge.util.io import read_json
+
     video = recap.get("video")
     if not video or not Path(video).is_file():
-        return None
+        return make_recap_card(recap, out, fps, size)
     total = media_duration(video)
     seconds = float(recap["seconds"])
-    # pick moments: the cliffhanger (end), ~35 %, ~70 % of the previous part
-    picks = [max(0.0, total - 2.4), total * 0.35, total * 0.7]
-    seg = seconds / len(picks)
+    prev_dir = Path(recap["episode_dir"]) if recap.get("episode_dir") else None
+    picks = recap_moments(read_json(prev_dir / "timeline.json", None) if prev_dir else None, total,
+                          read_json(prev_dir / "shotlist.json", None) if prev_dir else None)
     parts = []
     w, h = size
-    for i, t in enumerate(picks):
+    for i, (t, share) in enumerate(zip(picks, RECAP_SPLITS, strict=True)):
+        seg = seconds * share
+        n = max(1, round(seg * fps))
         p = out.parent / f"_recap_{i}.mp4"
-        vf = (f"scale={w}:{h}:force_original_aspect_ratio=increase,crop={w}:{h},"
-              f"zoompan=z='min(zoom+0.0025,1.12)':d=1:s={w}x{h}:fps={fps},eq=saturation=0.72:contrast=1.06,"
-              f"vignette=PI/4.2,fps={fps}")
-        ffmpeg(["-ss", f"{t:.3f}", "-t", f"{seg:.3f}", "-i", video, "-vf", vf, "-an", "-c:v", "libx264", "-crf", "16",
-                "-preset", "veryfast", "-pix_fmt", "yuv420p", str(p)])
+        # CFR first, zoompan per frame (centered push-in), then explicit timestamps: zoompan's own
+        # output timestamps do not survive a following fps filter (it multiplied the length ~500x)
+        vf = (f"fps={fps},scale={w}:{h}:force_original_aspect_ratio=increase,crop={w}:{h},"
+              f"zoompan=z='min(1+{0.1 / n:.5f}*on,1.12)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=1:"
+              f"s={w}x{h}:fps={fps},setpts=N/({fps}*TB),eq=saturation=0.72:contrast=1.06,vignette=PI/4.2")
+        ffmpeg(["-ss", f"{t:.3f}", "-i", video, "-frames:v", str(n), "-vf", vf, "-an", "-c:v", "libx264", "-crf", "16",
+                "-preset", "veryfast", "-pix_fmt", "yuv420p", "-r", str(fps), str(p)])
         parts.append(p)
     lst = out.parent / "_recap_list.txt"
     lst.write_text("".join(f"file '{p.name}'\n" for p in parts), encoding="utf-8")
@@ -61,6 +126,40 @@ def make_recap_clip(recap: dict, out: Path, fps: int, size: tuple[int, int]) -> 
     for p in parts:
         p.unlink(missing_ok=True)
     lst.unlink(missing_ok=True)
+    return out
+
+
+def _check_duration(path: Path, expected: float, what: str, tol: float = 0.25) -> float:
+    got = media_duration(path)
+    if abs(got - expected) > tol:
+        raise RuntimeError(f"{what} is {got:.2f}s, expected {expected:.2f}s (ffmpeg filter/timestamp problem)")
+    return got
+
+
+def make_recap_card(recap: dict, out: Path, fps: int, size: tuple[int, int]) -> Path:
+    """Fallback when the previous part has not been rendered yet: a styled text card with the
+    previous part's summary, same duration, so audio, captions and picture stay aligned."""
+    from storyforge.captions.ass import PLAY_H, PLAY_W, ass_color
+
+    w, h = size
+    seconds = float(recap["seconds"])
+    text = (recap.get("text") or "Previously...").replace("\n", " ")
+    ass = out.parent / "_recap_card.ass"
+    ass.write_text("\n".join([
+        "[Script Info]", "ScriptType: v4.00+", f"PlayResX: {PLAY_W}", f"PlayResY: {PLAY_H}", "WrapStyle: 0", "",
+        "[V4+ Styles]",
+        "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, "
+        "Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, "
+        "MarginR, MarginV, Encoding",
+        f"Style: Card,Inter,62,{ass_color('#FFFFFF')},{ass_color('#FFFFFF')},{ass_color('#000000')},"
+        f"{ass_color('#000000', 0x80)},-1,0,0,0,100,100,0,0,1,3,0,5,120,120,0,1",
+        "", "[Events]", "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text",
+        f"Dialogue: 0,0:00:00.00,0:00:{seconds:05.2f},Card,,0,0,0,,{{\\fad(200,250)}}{text}",
+    ]) + "\n", encoding="utf-8")
+    ffmpeg(["-f", "lavfi", "-i", f"color=c=0x1B1B2F:s={w}x{h}:d={seconds:.3f}:r={fps}", "-vf",
+            f"subtitles={ass.name},vignette=PI/4", "-c:v", "libx264", "-crf", "16", "-preset", "veryfast", "-pix_fmt",
+            "yuv420p", out.name], cwd=out.parent)
+    ass.unlink(missing_ok=True)
     return out
 
 
@@ -94,12 +193,14 @@ def encode_episode(*, seq_dir: Path, fps: int, mix: Path, captions_dir: Path, ou
     ffmpeg(["-framerate", str(fps), "-i", str(seq_dir / "%06d.png"), "-vf", ",".join(vf), "-c:v", "libx264",
             "-crf", "12", "-preset", "veryfast", "-pix_fmt", "yuv420p", "-color_primaries", "bt709", "-color_trc",
             "bt709", "-colorspace", "bt709", str(story)])
+    n_frames = len(list(seq_dir.glob("*.png")))
+    _check_duration(story, n_frames / fps, "graded story video")
     video_in = story
     recap_dur = 0.0
     if recap:
         rc = make_recap_clip(recap, work / "recap.mp4", fps, size)
         if rc:
-            recap_dur = media_duration(rc)
+            recap_dur = _check_duration(rc, float(recap["seconds"]), "recap montage")
             joined = work / "joined.mp4"
             (work / "join.txt").write_text("file 'recap.mp4'\nfile 'story.mp4'\n", encoding="utf-8")
             ffmpeg(["-f", "concat", "-safe", "0", "-i", "join.txt", "-c", "copy", joined.name], cwd=work)

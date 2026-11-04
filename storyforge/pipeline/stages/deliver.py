@@ -31,8 +31,12 @@ def recap_info(ctx) -> dict | None:
         if cand.is_file():
             video = cand
             break
+    arc = ctx.project.arc(meta.get("arc_id", "")) or {}
+    plan = next((p for p in arc.get("parts", []) if p.get("part") == meta.get("part")), {})
+    summary = next((e.get("summary") for e in ctx.bible().get("continuity_log", []) if e.get("episode_id") == prev), None)
+    text = plan.get("recap") or summary or "Previously..."
     return {"previous": prev, "seconds": seconds, "video": str(video) if video else None,
-            "position": fmt.get("recap_position", "open")}
+            "episode_dir": str(prev_dir), "position": fmt.get("recap_position", "open"), "text": text[:160]}
 
 
 class CaptionsStage(Stage):
@@ -127,7 +131,10 @@ class MuxStage(Stage):
         return {"render": maybe_file_hash(ctx.path("render", p, "manifest.json")),
                 "mix": maybe_file_hash(ctx.path("audio", "mix.wav")),
                 "captions": tree_hash(ctx.path("captions"), ["*.ass"]), "grade": look.get("grade"),
-                "recap": {**rc, "video_hash": maybe_file_hash(rc["video"]) if rc and rc.get("video") else None} if rc else None}
+                "recap": {**rc, "video_hash": maybe_file_hash(rc["video"]) if rc.get("video") else None,
+                          "plan_hash": [maybe_file_hash(Path(rc["episode_dir"]) / f)
+                                        for f in ("timeline.json", "shotlist.json")]}
+                if rc else None}
 
     def outputs(self, ctx):
         return list(self._names(ctx))

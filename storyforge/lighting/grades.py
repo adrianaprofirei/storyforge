@@ -9,6 +9,8 @@ lut (optional .cube file applied after the grade).
 
 from __future__ import annotations
 
+from pathlib import Path
+
 GRADE_PRESETS: dict[str, dict] = {
     "warm_storybook": {"exposure": 0.0, "contrast": 1.06, "saturation": 1.08, "warmth": 0.03,
                        "shadows_tint": "#2B2D5A", "highlights_tint": "#FFE7C2", "vignette": 0.22, "grain": 0.035},
@@ -31,4 +33,10 @@ def resolve_grade(grade: dict | None) -> dict:
     base = dict(GRADE_PRESETS.get(preset, GRADE_PRESETS["warm_storybook"]))
     base.update({k: v for k, v in grade.items() if v is not None})
     base["preset"] = preset
+    lut = base.get("lut")
+    if lut and not Path(lut).is_absolute():
+        # bible values are file names relative to assets/luts (LUT files are never committed)
+        from storyforge.config import ASSETS_DIR
+
+        base["lut"] = str(ASSETS_DIR / "luts" / lut)
     return base
