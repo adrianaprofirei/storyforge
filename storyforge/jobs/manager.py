@@ -68,7 +68,9 @@ class JobManager:
                  lanes: dict[str, int] | None = None):
         self.settings = settings or get_settings()
         self.store = store or JobStore(self.settings.data_dir / "jobs")
-        self.lanes = dict(lanes or DEFAULT_LANES)
+        # STORYFORGE_WORKERS = parallel jobs on the render lane (each job may itself use RENDER_WORKERS
+        # Blender processes); story and preview lanes always run one job at a time each
+        self.lanes = dict(lanes or {**DEFAULT_LANES, "render": max(1, int(self.settings.server_workers))})
         self._threads: list[threading.Thread] = []
         self._stop = threading.Event()
         self._wake = threading.Condition()

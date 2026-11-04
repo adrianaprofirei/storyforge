@@ -87,7 +87,7 @@ export function ShotsTab({ sid, eid }: { sid: string; eid: string }) {
                   </td>
                   <td style={{ minWidth: 130 }}><Select value={o.type ?? s.type} options={opts.shot_types} onChange={(v) => setField(s.id, "type", v === s.type && !o.type ? null : v)} /></td>
                   <td style={{ width: 80 }}><input type="number" value={o.lens_mm ?? Math.round(s.lens_mm)} onChange={(e) => setField(s.id, "lens_mm", Number(e.target.value))} /></td>
-                  <td style={{ minWidth: 120 }}><Select value={o.movement ?? s.movement?.type} options={["static", ...opts.camera_moves]} onChange={(v) => setField(s.id, "movement", v)} /></td>
+                  <td style={{ minWidth: 120 }}><Select value={o.movement ?? s.movement?.type} options={opts.camera_moves.includes("static") ? opts.camera_moves : ["static", ...opts.camera_moves]} onChange={(v) => setField(s.id, "movement", v)} /></td>
                   <td style={{ minWidth: 100 }}><Select value={o.subject ?? s.subject} options={cast} onChange={(v) => setField(s.id, "subject", v)} /></td>
                   <td className="small muted" style={{ maxWidth: 220 }}>{s.reason}</td>
                   <td className="nowrap">

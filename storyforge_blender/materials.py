@@ -90,7 +90,8 @@ class MaterialFactory:
             "plastic": dict(roughness=0.38, Coat_Weight=0.25, Coat_Roughness=0.2, Specular_IOR_Level=0.5),
             "skin": dict(roughness=0.48, Subsurface_Weight=0.12, Subsurface_Scale=0.02, Coat_Weight=0.08,
                          Specular_IOR_Level=0.45),
-            "cloth": dict(roughness=0.82, Sheen_Weight=0.35, Sheen_Roughness=0.5, Specular_IOR_Level=0.35),
+            # sheen tinted by the fabric colour (set below): a white sheen layer pastelizes saturated cloth
+            "cloth": dict(roughness=0.82, Sheen_Weight=0.3, Sheen_Roughness=0.5, Specular_IOR_Level=0.35),
             "hair": dict(roughness=0.32, Coat_Weight=0.3, Coat_Roughness=0.25, Specular_IOR_Level=0.55),
             "rubber": dict(roughness=0.62, Specular_IOR_Level=0.4),
             "metal": dict(roughness=0.32, Metallic=1.0),
@@ -102,6 +103,8 @@ class MaterialFactory:
         }
         p = presets.get(kind, presets["plastic"])
         rough = p.pop("roughness", 0.5)
+        if "Sheen_Weight" in p:
+            p["Sheen_Tint"] = base
         return n.principled(base, rough, **p)
 
     def _toon(self, n: Nodes, base, kind: str):

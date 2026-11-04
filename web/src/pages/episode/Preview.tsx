@@ -4,7 +4,7 @@ import { Badge, Empty, JobStatus, Select, useToast } from "../../components/ui";
 import { useFetch } from "../../hooks";
 
 const SHOT_COLORS: Record<string, string> = {
-  establishing: "#3b6fb6", wide: "#4a7fc4", medium_wide: "#5b8fd0", two_shot: "#7b6fd6", medium: "#9a5fd0",
+  establishing_wide: "#3b6fb6", wide: "#4a7fc4", medium_wide: "#5b8fd0", two_shot: "#7b6fd6", medium: "#9a5fd0",
   over_the_shoulder: "#b05cc0", medium_close: "#c45a9e", close_up: "#d4576f", extreme_close_up: "#de6a4a", insert: "#c99a2e",
 };
 const SPEAKER_COLORS = ["#1f9d63", "#2d7ff9", "#c78300", "#d23f45", "#7b6fd6", "#0aa3a3"];
@@ -20,16 +20,20 @@ export function PreviewTab({ sid, eid, outputs }: { sid: string; eid: string; ou
   const tl = useFetch<any>(`/api/series/${sid}/episodes/${eid}/timeline`);
 
   useEffect(() => {
-    const v = video.current;
-    if (!v) return;
+    // follow the playhead; the <video> element may mount after the timeline loads
     let raf = 0;
+    let last = -1;
     const loop = () => {
-      setT(v.currentTime);
+      const v = video.current;
+      if (v && v.currentTime !== last) {
+        last = v.currentTime;
+        setT(last);
+      }
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);
-  }, [preset, clean]);
+  }, []);
 
   const data = tl.data;
   const lead = data?.lead_seconds || 0;
