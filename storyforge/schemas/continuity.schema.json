@@ -1,0 +1,137 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://storyforge.dev/schemas/continuity.schema.json",
+  "title": "Continuity log entry written after an episode renders",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "summary",
+    "changes"
+  ],
+  "properties": {
+    "summary": {
+      "type": "string",
+      "maxLength": 700
+    },
+    "changes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "relationships",
+        "objects",
+        "secrets",
+        "facts"
+      ],
+      "properties": {
+        "relationships": {
+          "type": "array",
+          "maxItems": 10,
+          "items": {
+            "type": "string",
+            "maxLength": 240
+          }
+        },
+        "objects": {
+          "type": "array",
+          "maxItems": 10,
+          "items": {
+            "type": "string",
+            "maxLength": 240
+          }
+        },
+        "secrets": {
+          "type": "array",
+          "maxItems": 10,
+          "items": {
+            "type": "string",
+            "maxLength": 240
+          }
+        },
+        "facts": {
+          "type": "array",
+          "maxItems": 10,
+          "items": {
+            "type": "string",
+            "maxLength": 240
+          }
+        }
+      }
+    },
+    "open_threads": {
+      "type": "array",
+      "maxItems": 10,
+      "items": {
+        "type": "string",
+        "maxLength": 240
+      }
+    },
+    "object_states": {
+      "type": "array",
+      "maxItems": 12,
+      "description": "Where important objects are at the END of the episode (who holds them, their state)",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "object",
+          "holder",
+          "status"
+        ],
+        "properties": {
+          "object": {
+            "type": "string",
+            "maxLength": 40
+          },
+          "holder": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[a-z][a-z0-9_]{0,39}$",
+            "description": "cast id, or null if nobody holds it"
+          },
+          "status": {
+            "enum": [
+              "has",
+              "lost",
+              "broken",
+              "hidden",
+              "given_away",
+              "destroyed",
+              "found",
+              "returned",
+              "stored"
+            ]
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 160
+          }
+        }
+      }
+    },
+    "character_states": {
+      "type": "array",
+      "maxItems": 10,
+      "description": "Lasting changes to a character (injury, new skill, mood, secret learned)",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "character",
+          "state"
+        ],
+        "properties": {
+          "character": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]{0,39}$"
+          },
+          "state": {
+            "type": "string",
+            "maxLength": 200
+          }
+        }
+      }
+    }
+  }
+}

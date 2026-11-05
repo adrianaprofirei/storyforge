@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://storyforge.dev/schemas/cast_member.schema.json",
+  "title": "Cast registry entry",
+  "type": "object",
+  "required": [
+    "id",
+    "name",
+    "kind",
+    "look",
+    "voice"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]{0,39}$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 40
+    },
+    "kind": {
+      "enum": [
+        "procedural",
+        "imported"
+      ]
+    },
+    "look": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "body": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "number",
+            "minimum": 0.3,
+            "maximum": 2.5
+          }
+        },
+        "colors": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^#[0-9a-fA-F]{6}$"
+          }
+        },
+        "hair": {
+          "type": "object"
+        },
+        "accessories": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "type"
+            ]
+          }
+        },
+        "clothing": {
+          "type": "object"
+        },
+        "face": {
+          "type": "object"
+        }
+      }
+    },
+    "rig": {
+      "type": "object"
+    },
+    "voice": {
+      "type": "object"
+    },
+    "settings": {
+      "type": "object"
+    },
+    "import": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "file": {
+          "type": "string"
+        },
+        "bone_map": {
+          "type": "object"
+        },
+        "face": {
+          "type": "object"
+        },
+        "scale": {
+          "type": "number"
+        }
+      }
+    }
+  }
+}

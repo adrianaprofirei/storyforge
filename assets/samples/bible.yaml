@@ -1,0 +1,138 @@
+# Sample series bible bundled for demo mode. Every StoryForge stage reads this file
+# (copied into data/projects/<series>/bible/ and versioned on every edit).
+series_id: clockwork_club
+title: The Clockwork Club
+version: 1
+logline: >
+  Three friends in the seaside town of Tickton solve small, strange mysteries
+  around the giant clock tower that stopped fifty years ago.
+
+world:
+  setting: >
+    Tickton, a sleepy seaside town of toy-like buildings, cobbled streets and one
+    enormous clock tower. The school library is ancient and full of secrets.
+  tone: warm, funny, a little mysterious; jokes land quickly, nobody is ever really in danger
+  target_audience: kids 8-12 and their families
+  content_rules:
+    - kid-safe language and situations
+    - no graphic violence, no weapons, nobody gets hurt
+    - no real brands, products, logos or real people
+    - mysteries always have a grounded or gently whimsical explanation
+    - kindness wins; teasing is affectionate, never mean
+  visual_style: stylized_3d   # stylized_3d | cartoon
+
+format:
+  fps: 30
+  part_min_seconds: 45
+  part_max_seconds: 90
+  recap_seconds: 2.5
+  recap_position: open        # open (before the hook-up) | after_hook
+  part_card:
+    text: "PART {n}"
+    color: "#FFD447"
+    text_color: "#1B1B2F"
+    seconds: 2.0
+
+look:
+  style: stylized_3d
+  grade:
+    preset: warm_storybook
+    exposure: 0.0
+    contrast: 1.06
+    saturation: 1.08
+    warmth: 0.02            # + warmer, - cooler
+    shadows_tint: "#2B2D5A" # lifted shadows tint (cinematic teal/blue blacks)
+    highlights_tint: "#FFE7C2"
+    vignette: 0.22
+    grain: 0.035
+    lut: null               # optional path to a .cube LUT applied after the grade
+  caption_style: bold_pop
+  accent_color: "#FFD447"
+
+characters:
+  - id: milo
+    name: Milo
+    cast_ref: milo
+    role: the idea guy
+    personality: Endlessly curious inventor, overexcited, brave in a rush-in-first way, big heart.
+    speech_patterns: Talks fast, stacks words, interrupts himself, loves dramatic emphasis.
+    catchphrases: ["Okay, okay, okay - hear me out!"]
+    wants: To invent something that really matters to the town.
+    fears: That his ideas are silly and nobody takes him seriously.
+    voice_direction: bright, quick, breathless excitement; voice jumps up when amazed
+  - id: zara
+    name: Zara
+    cast_ref: zara
+    role: the brain
+    personality: Precise planner with a bone-dry sense of humor; secretly the most sentimental of the three.
+    speech_patterns: Short, exact sentences. Deadpan. Likes "statistically" and writing things down.
+    catchphrases: ["Noted.", "Statistically speaking..."]
+    wants: For things to make sense.
+    fears: Losing control, or anyone reading the private poems in her notebook.
+    voice_direction: calm, measured, deadpan, with rare sly warmth
+  - id: gus
+    name: Gus
+    cast_ref: gus
+    role: the heart
+    personality: Big, gentle and anxious; always has a snack; the first to comfort a friend.
+    speech_patterns: Worried questions, nervous jokes, trails off when scared.
+    catchphrases: ["I didn't touch it! ...I touched it a little."]
+    wants: Everyone to get along (and a snack).
+    fears: The dark, and anything that might be a ghost.
+    voice_direction: warm and gentle, nervous wobble, voice cracks when scared
+
+relationships:
+  - a: milo
+    b: zara
+    type: best friends since kindergarten
+    notes: Bicker like siblings; Zara always fact-checks Milo, Milo always pushes Zara to try.
+  - a: milo
+    b: gus
+    type: inventor and loyal test pilot
+    notes: Gus volunteers for every one of Milo's tests, even the scary ones.
+  - a: zara
+    b: gus
+    type: protective friends
+    notes: Zara looks out for Gus; Gus is the only one allowed to read her notebook's "official" pages.
+
+running_gags:
+  - id: backpack
+    description: Gus's backpack holds an impossible amount of snacks and warm drinks.
+  - id: almost_works
+    description: Milo's inventions almost work, usually with a tiny harmless mishap.
+  - id: noted
+    description: Zara answers surprises with a flat "Noted." and writes it down.
+
+locations:
+  - id: library
+    name: Tickton School Library
+    preset: library
+    description: Tall wooden shelves, green reading lamps, dust in the sunbeams, a big arched window facing the clock tower.
+    surface: wood
+    room: medium_room
+    extras: false
+  - id: clock_tower
+    name: Inside the Clock Tower
+    preset: clock_tower
+    description: Huge dusty brass gears, wooden stairs and beams, moonlight through the giant glass clock face.
+    surface: wood
+    room: large_hall
+    extras: false
+  - id: hallway
+    name: School Hallway
+    preset: hallway
+    description: Bright lockers, notice boards, other students rushing between classes.
+    surface: tile
+    room: hallway
+    extras: true
+  - id: town_square
+    name: Tickton Town Square
+    preset: street
+    description: Cobbles, toy-like shopfronts, a fountain, the clock tower looming over everything.
+    surface: concrete
+    room: outdoors
+    extras: true
+
+arcs: []
+episodes: []
+continuity_log: []

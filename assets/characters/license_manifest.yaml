@@ -1,0 +1,5 @@
+# License manifest for imported characters in assets/characters/ (files are never committed).
+characters:
+  # - file: robo/robo.glb
+  #   license: made by me / CC-BY 4.0 (credit: ...) / commercial license from ...
+  #   source: URL or description

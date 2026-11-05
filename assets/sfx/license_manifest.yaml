@@ -1,0 +1,27 @@
+# License manifest for sound effects in assets/sfx/.
+#
+# Third-party audio is NEVER committed (see .gitignore): download it yourself into this folder
+# and describe each file here so the source and license travel with your project. The quality
+# report lists every non-generated sound used in an episode together with its license.
+#
+# Fields:
+#   file:     path relative to assets/sfx (or just the file name)
+#   tags:     which cues it can play; common ones:
+#             footstep + one of wood/tile/carpet/grass/concrete/gravel/metal,
+#             whoosh (+fast), impact_soft, impact, pop, boing, zip, twinkle, magic_shimmer,
+#             clock_chime, tick, gears, clink, key_jingle, key_turn, flashlight_click,
+#             gadget_beep, backpack_zip, floor_creak, roll, tap, paper, paper_slam, cloth, clap,
+#             reveal_sting, cliffhanger_sting, payoff_sting, recap, ambience+outdoors,
+#             ambience+crowd
+#   license:  e.g. "CC0", "CC-BY 4.0 (credit: name)", "Sonniss GDC royalty-free"
+#   source:   URL or description
+#   enabled:  false to keep a file on disk but never use it
+sounds:
+  # - file: footsteps/wood_01.wav
+  #   tags: [footstep, wood]
+  #   license: CC0
+  #   source: https://freesound.org/s/000000/
+  # - file: cartoon/boing_big.wav
+  #   tags: [boing]
+  #   license: CC-BY 4.0 (credit: example author)
+  #   source: https://freesound.org/s/000001/

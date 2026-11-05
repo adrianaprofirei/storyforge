@@ -1,0 +1,52 @@
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+build/
+dist/
+
+# StoryForge working data (projects, renders, caches)
+/data/
+/tools/
+*.blend1
+*.blend@
+
+# Third-party assets are NEVER committed: only manifests/readmes live in git.
+/assets/animations/*
+!/assets/animations/README.md
+!/assets/animations/license_manifest.yaml
+/assets/sfx/*
+!/assets/sfx/README.md
+!/assets/sfx/license_manifest.yaml
+/assets/music/*
+!/assets/music/README.md
+!/assets/music/license_manifest.yaml
+/assets/characters/*
+!/assets/characters/README.md
+!/assets/characters/license_manifest.yaml
+/assets/fonts/*
+!/assets/fonts/README.md
+/assets/luts/*
+!/assets/luts/README.md
+
+# Frontend
+web/node_modules/
+web/.vite/
+web/*.tsbuildinfo
+# web/dist is committed on purpose: `storyforge serve` works without Node.js (rebuild: cd web && npm run build)
+!web/dist/
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

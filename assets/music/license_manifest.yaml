@@ -1,0 +1,17 @@
+# License manifest for music in assets/music/.
+#
+# Third-party music is NEVER committed (see .gitignore). Describe each file you add:
+#   file:    path relative to assets/music
+#   moods:   playful | mysterious | tense | sad | triumphant | calm | comedic | spooky (one or more)
+#   bpm:     optional, informational
+#   loop:    true if the file loops cleanly (default true)
+#   license: e.g. "CC0", "CC-BY 4.0 (credit: name)", "licensed from <library>, license id ..."
+#   source:  URL or description
+#   enabled: false to ignore a file
+tracks:
+  # - file: beds/sneaky_pizzicato.ogg
+  #   moods: [mysterious, comedic]
+  #   bpm: 96
+  #   loop: true
+  #   license: CC-BY 4.0 (credit: example composer)
+  #   source: https://example.com/track

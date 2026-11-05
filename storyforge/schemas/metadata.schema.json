@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://storyforge.dev/schemas/metadata.schema.json",
+  "title": "Title/description/hashtag suggestions for one part",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "titles",
+    "description",
+    "hashtags"
+  ],
+  "properties": {
+    "titles": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 5,
+      "items": {
+        "type": "string",
+        "maxLength": 100
+      }
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 600
+    },
+    "hashtags": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 15,
+      "items": {
+        "type": "string",
+        "pattern": "^#[A-Za-z0-9_]{2,40}$"
+      }
+    }
+  }
+}
